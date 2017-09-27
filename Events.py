@@ -1,4 +1,6 @@
 from abc import ABC, abstractmethod
+import numpy as np
+from Constants import *
 
 
 class Event(ABC):
@@ -40,6 +42,20 @@ class FToggle(Event):
         return "[{}] F_TOGGLE".format(self.timestamp)
 
 
+class LChange(Event):
+    """Change passenger arrival rate."""
+
+    def __init__(self, timestamp, new_l):
+        super().__init__(timestamp)
+        self.new_l = new_l
+
+    def handle(self, state, events):
+        state.lambda_ = self.new_l
+
+    def __str__(self) -> str:
+        return "[{}] L_CHANGE".format(self.timestamp)
+
+
 class TramArrival(Event):
     """Arrival of a tram."""
 
@@ -50,6 +66,27 @@ class TramArrival(Event):
         self.nonstop = nonstop
 
     def handle(self, state, events):
+        end_dep = self.stop in [PR_DEP, CS_DEP]
+        end_arr = self.stop in [PR_ARR, CS_ARR]
+
+        p_out = 100 if end_arr else np.random.uniform(0, 100)  # TODO percentage
+        p_in = state.stop_capacity[self.stop + 1 if end_arr else self.stop]
+        next_stop = self.stop + 1 if end_arr else self.stop
+
+        state.tram_capacity[self.tram] -= p_out
+
+        last_tram = state.stop_last_timestamps[next_stop]
+        wait_for_next_tram = 0  # TODO fast/slow speeds
+        extra_time = q if end_arr else 12.5 + 0.22 * p_in + 0.13 * p_out
+        time_until_scheduled = max(0, state.timetable[self.stop].get_next_time() - self.timestamp) if end_dep else 0
+
+        events.schedule(
+            TramDeparture(
+                self.timestamp + max(max(extra_time, wait_for_next_tram), time_until_scheduled),
+                self.tram,
+                next_stop
+            )
+        )
         return super().handle(state, events)
 
     def __str__(self) -> str:
@@ -68,7 +105,7 @@ class TramDeparture(Event):
         return super().handle(state, events)
 
     def __str__(self) -> str:
-        return "[{0.timestamp}] T_DEP: Tram {0.tram}, Stop {0.stop}, Nonstop {0.nonstop}".format(self)
+        return "[{0.timestamp}] T_DEP: Tram {0.tram}, Stop {0.stop}".format(self)
 
 
 class PassengerArrival(Event):
@@ -79,6 +116,9 @@ class PassengerArrival(Event):
         self.stop = stop
 
     def handle(self, state, events):
+        state.stop_capacity[self.stop] += 1
+        inter_time = np.random.exponential(1/state.lambda_)
+        events.schedule(PassengerArrival(inter_time, self.stop))
         return super().handle(state, events)
 
     def __str__(self) -> str:
