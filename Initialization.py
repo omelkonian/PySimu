@@ -1,5 +1,6 @@
-from State import State
 from Events import *
+from T import *
+from State import State
 
 # State
 state = State()
@@ -9,10 +10,10 @@ events = Events()
 
 # Schedule initial events
 events.schedule(
-    EndSim(3600 * 24),
-    FToggle(7 * 3600),
-    FToggle(19 * 3600),
+    EndSim(T('00:00').shift(days=1)),
+    FToggle(T('07:00:00')),
+    FToggle(T('19:00:00')),
     # TODO First trams
-    TramArrival(5 * 3600 + 40 * 60, 0, 0)
+    TramArrival(T('05:40:00'), 0, 0)
     # TODO passenger arrivals
 )

@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-import numpy as np
 from Constants import *
+from StochasticVariables import *
 
 
 class Event(ABC):
     """Event super-class"""
 
-    timestamp = 0.0
+    timestamp = None
 
     def __init__(self, timestamp):
         self.timestamp = timestamp
@@ -36,7 +36,7 @@ class FToggle(Event):
         super().__init__(timestamp)
 
     def handle(self, state, events):
-        state.toggle_timetable()
+        state.toggle_timetables()
 
     def __str__(self) -> str:
         return "[{}] F_TOGGLE".format(self.timestamp)
@@ -75,14 +75,15 @@ class TramArrival(Event):
 
         state.tram_capacity[self.tram] -= p_out
 
-        last_tram = state.stop_last_timestamps[next_stop]
+        # last_tram = state.stop_last_timestamps[next_stop]
         wait_for_next_tram = 0  # TODO fast/slow speeds
-        extra_time = q if end_arr else 12.5 + 0.22 * p_in + 0.13 * p_out
-        time_until_scheduled = max(0, state.timetable[self.stop].get_next_time() - self.timestamp) if end_dep else 0
+        extra_time = q if end_arr else gen_dwell_time(p_in, p_out)
+        minutes_late = (state.timetable[self.stop].next_schedule().time - self.timestamp.time).total_seconds()
+        time_until_scheduled = max(0, minutes_late) if end_dep else 0
 
         events.schedule(
             TramDeparture(
-                self.timestamp + max(max(extra_time, wait_for_next_tram), time_until_scheduled),
+                self.timestamp.shift(seconds=max(max(extra_time, wait_for_next_tram), time_until_scheduled)),
                 self.tram,
                 next_stop
             )
@@ -117,7 +118,7 @@ class PassengerArrival(Event):
 
     def handle(self, state, events):
         state.stop_capacity[self.stop] += 1
-        inter_time = np.random.exponential(1/state.lambda_)
+        inter_time = gen_passenger_arrival(state)
         events.schedule(PassengerArrival(inter_time, self.stop))
         return super().handle(state, events)
 
@@ -133,7 +134,7 @@ class Events(object):
     def schedule(self, *events):
         for event in events:
             self.event_list.append(event)
-        self.event_list.sort(key=lambda e: e.timestamp)
+        self.event_list.sort(key=lambda e: e.timestamp.time.timestamp)
 
     def next(self):
         return self.event_list.pop(0)

@@ -1,5 +1,5 @@
 ## TODO
-- [ ] Proper time representation
+- [x] Proper time representation
   * e.g. `int` -> `arrow.Arrow`
 - [ ] Handlers
   * [x] END_SIM
