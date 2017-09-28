@@ -8,7 +8,6 @@
   * [ ] TRAM_ARRIVAL
   * [ ] TRAM_DEPARTURE
   * [x] PASSENGER_ARRIVAL
-  * [x]
 - [ ] Spawn algorithm
   * [ ] Initial trams
   * [ ] Additional trams when F_TOGGLE
