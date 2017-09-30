@@ -24,5 +24,5 @@
   * [ ] Plot derived histograms
 - Passengers
   * [ ] Retrieve λ-rate from data
-  * [ ] Fing P-out distribution from data fitting (for each stop)
+  * [ ] Find P-out distribution from data fitting (for each stop)
   * [ ] Just in time passengers check the difference in dwell time
