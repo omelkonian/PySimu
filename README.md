@@ -31,6 +31,6 @@
     - p-out percentage distribution
     - p-in to get Poisson process every 15min -> λ rates every 15min
     - driving times -> Gamma (a, b)
-  * [ ] Plot derived histograms3
+  * [ ] Plot derived histograms
 - Optional
   * [ ] Just in time passengers check the difference in dwell time
