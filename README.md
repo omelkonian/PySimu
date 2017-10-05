@@ -18,10 +18,20 @@
   * [ ] Dwell times
   * [ ] Passenger exit percentage
 - Data mangling
+  * [ ] Data understanding
+    - Bus info (a + b)
+    - Runtimes
+    - Passenger Prognose
+    - Stop correspondence
   * [ ] Transformations
     - p-out percentages
+    - p-in -> some table to derive Poisson λ from fitting
     - driving times per segment
-  * [ ] Plot derived histograms
+  * [ ] Data fittings
+    - p-out percentage distribution
+    - p-in to get Poisson process every 15min -> λ rates every 15min
+    - driving times -> Gamma (a, b)
+  * [ ] Plot derived histograms3
 - Passengers
   * [ ] Retrieve λ-rate from data
   * [ ] Find P-out distribution from data fitting (for each stop)
