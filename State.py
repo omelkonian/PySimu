@@ -1,19 +1,50 @@
+from collections import deque
+
 from Constants import *
 from T import *
+
+
+class Tram(object):
+    """Representation of a tram."""
+    def __init__(self, id, nonstop=False):
+        self.id = id
+        self.capacity = 0
+        self.nonstop = nonstop
+
+    def remove_nonstop(self):
+        self.nonstop = False
+
+    def __str__(self):
+        return "Tram {0.id} [{0.capacity}] {1}".format(self, "!NONSTOP" if self.nonstop else "")
+
+
+class Stop(object):
+    """Representation of a tram stop."""
+    def __init__(self, index):
+        self.name = stop_names[index]
+        self.last_departure = None
+        self.arrivals = deque()
+        self.queue = deque()
+
+    @property
+    def capacity(self):
+        return len(self.arrivals)
+
+    def __str__(self):
+        return """{0.name} [{0.capacity}] @{0.last_departure} Arr: {1} Queue: {2}""".format(
+            self, ', '.join(map(str, self.arrivals)), ', '.join(map(str, self.queue)))
 
 
 class State(object):
     """State of the simulation"""
     def __init__(self):
         self.end_simulation = False
+        self.lambda_ = initial_l
         self.timetable_generator = self.gen_timetable()
         self.timetable = {}
         self.toggle_timetables()
-        self.tram_capacity = [0] * number_of_trams
-        self.stop_capacity = [0] * number_of_stops
-        self.stop_last_timestamps = [None] * number_of_stops
-        self.arrivals = [[]] * number_of_stops
-        self.lambda_ = initial_l
+        self.stops = [Stop(i) for i in range(number_of_stops)]
+        self.trams = [Tram(i, nonstop=True) for i in range(0, 4)] + [Tram(i) for i in range(4, number_of_trams)]
 
     @staticmethod
     def gen_timetable():
@@ -30,11 +61,18 @@ class State(object):
         }
 
     def __str__(self):
-        return """
-        ============ STATE ============
-        Timetable: {0.timetable}
-        TramCapacity: {0.tram_capacity}
-        StopCapacity: {0.stop_capacity}
-        Arrivals: {0.arrivals}
-        ===============================
-        """.format(self)
+        ret = "============ STATE ============\nTRAMS:\n"
+        for i, tr in enumerate(self.trams):
+            ret += "\t{0}. {1}\n".format(i, str(tr))
+        ret += "STOPS:\n"
+        for st in self.stops:
+            ret += "\t{}\n".format(str(st))
+        try:
+            ret += "TimetablePR: {}".format(self.timetable[PR_DEP].schedules[0])
+        except IndexError:
+            ret += "TimetablePR -"
+        try:
+            ret += "\nTimetableCS: {}".format(self.timetable[CS_DEP].schedules[0])
+        except IndexError:
+            ret += "\nTimetableCS -"
+        return ret

@@ -1,17 +1,17 @@
 ## TODO
 - [x] Proper time representation
   * e.g. `int` -> `arrow.Arrow`
-- [ ] Handlers
+- [x] Handlers
   * [x] END_SIM
   * [x] F_TOGGLE
   * [x] L_CHANGE
-  * [ ] TRAM_ARRIVAL
-  * [ ] TRAM_DEPARTURE
+  * [x] TRAM_ARRIVAL
+  * [x] TRAM_DEPARTURE
   * [x] PASSENGER_ARRIVAL
-  * [ ] Event for verifying if a tram can leave the station (40 sec rule)
-- [ ] Spawn algorithm
-  * [ ] Initial trams
-  * [ ] Additional trams when F_TOGGLE
+  * [x] Event for verifying if a tram can leave the station (40 sec rule)
+- [x] Spawn algorithm
+  * [x] Initial trams
+  * [x] Additional trams when F_TOGGLE
 - Stochastic Generators
   * [ ] Passenger inter-arrival times
   * [ ] Driving times, gamma distribution from data fitting

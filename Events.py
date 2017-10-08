@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+
 from Constants import *
 from StochasticVariables import *
+from T import *
 
 
 class Event(ABC):
@@ -10,6 +12,9 @@ class Event(ABC):
 
     def __init__(self, timestamp):
         self.timestamp = timestamp
+
+    def __str__(self):
+        return "[{.timestamp}] ".format(self)
 
     @abstractmethod
     def handle(self, state, events):
@@ -26,20 +31,7 @@ class EndSim(Event):
         state.end_simulation = True
 
     def __str__(self) -> str:
-        return "[{}] END_SIM".format(self.timestamp)
-
-
-class FToggle(Event):
-    """Toggle tram frequency."""
-
-    def __init__(self, timestamp):
-        super().__init__(timestamp)
-
-    def handle(self, state, events):
-        state.toggle_timetables()
-
-    def __str__(self) -> str:
-        return "[{}] F_TOGGLE".format(self.timestamp)
+        return super().__str__() + "END_SIM"
 
 
 class LChange(Event):
@@ -53,45 +45,107 @@ class LChange(Event):
         state.lambda_ = self.new_l
 
     def __str__(self) -> str:
-        return "[{}] L_CHANGE".format(self.timestamp)
+        return super().__str__() + "L_CHANGE"
+
+
+class PassengerArrival(Event):
+    """Arrival of a passenger."""
+
+    def __init__(self, timestamp, stop):
+        super().__init__(timestamp)
+        self.stop = stop
+
+    def handle(self, state, events):
+        state.stops[self.stop].arrivals.append(self.timestamp)
+        inter_time = self.timestamp.shift(seconds=gen_passenger_arrival(state))
+        events.schedule(PassengerArrival(inter_time, self.stop))
+
+    def __str__(self) -> str:
+        return super().__str__() + "P_ARR, Stop: {0.stop}".format(self)
+
+
+class Enqueue(Event):
+    """Enqueue tram at entrance of stop."""
+
+    def __init__(self, timestamp, tram, stop):
+        super().__init__(timestamp)
+        self.tram = tram
+        self.stop = stop
+
+    def handle(self, state, events):
+        if not state.stops[self.stop].queue:
+            events.schedule(TramArrival(self.timestamp, self.tram, self.stop))
+        else:
+            state.stops[self.stop].queue.append(self.tram)
+
+    def __str__(self):
+        return """{0}ENQUEUE
+        Tram: {1.tram}
+        Stop: {2}        
+        """.format(super().__str__(), self, stop_names[self.stop])
 
 
 class TramArrival(Event):
     """Arrival of a tram."""
 
-    def __init__(self, timestamp, tram, stop, nonstop=False):
+    def __init__(self, timestamp, tram, stop):
         super().__init__(timestamp)
         self.tram = tram
         self.stop = stop
-        self.nonstop = nonstop
 
     def handle(self, state, events):
-        end_dep = self.stop in [PR_DEP, CS_DEP]
-        end_arr = self.stop in [PR_ARR, CS_ARR]
+        if self.stop == CS_DEP:  # reset nonstop flags at CS
+            state.trams[self.tram].remove_nonstop()
 
-        p_out = 100 if end_arr else np.random.uniform(0, 100)  # TODO percentage
-        p_in = state.stop_capacity[self.stop + 1 if end_arr else self.stop]
-        next_stop = self.stop + 1 if end_arr else self.stop
+        if state.trams[self.tram].nonstop:
+            assert state.trams[self.tram].capacity == 0
+            events.schedule(TramDeparture(self.timestamp, self.tram, self.stop))
+            return
 
-        state.tram_capacity[self.tram] -= p_out
+        p_out = (1 if end_arr(self.stop) else gen_passenger_exit_percentage()) * state.trams[self.tram].capacity
+        state.trams[self.tram].capacity -= p_out
+        p_in = min(c - state.stops[self.tram].capacity, state.stops[self.stop].capacity)
+        for _ in range(p_in):
+            passenger_enters = state.stops[self.stop].arrivals.popleft()
+            # TODO update stats
 
-        # last_tram = state.stop_last_timestamps[next_stop]
-        wait_for_next_tram = 0  # TODO fast/slow speeds
-        extra_time = q if end_arr else gen_dwell_time(p_in, p_out)
-        minutes_late = (state.timetable[self.stop].next_schedule().time - self.timestamp.time).total_seconds()
-        time_until_scheduled = max(0, minutes_late) if end_dep else 0
+        state.trams[self.tram].capacity += p_in
 
-        events.schedule(
-            TramDeparture(
-                self.timestamp.shift(seconds=max(max(extra_time, wait_for_next_tram), time_until_scheduled)),
-                self.tram,
-                next_stop
-            )
+        wait_for_next_tram = positive(
+            0 if state.stops[self.stop].last_departure is None
+            else (self.timestamp.time - state.stops[self.stop].last_departure.shift(seconds=40).time).total_seconds()
         )
-        return super().handle(state, events)
+        dwell_time = gen_dwell_time(p_in, p_out)
+
+        delay = max(wait_for_next_tram, dwell_time)
+
+        # TODO turnaround -- if end_arr(self.stop)
+
+        dep_time = self.timestamp.shift(seconds=delay)
+        if end_dep(self.stop):
+            try:
+                next_schedule = state.timetable[self.stop].next_schedule()
+            except IndexError:
+                state.toggle_timetables()
+                next_schedule = state.timetable[self.stop].next_schedule()
+            minutes_late = (self.timestamp.time - next_schedule.time).total_seconds()
+            if minutes_late >= 0:
+                pass  # TODO update stats
+            elif minutes_late < 0:
+                dep_time = self.timestamp.shift(seconds=max(delay, -minutes_late))
+
+        events.schedule(TramDeparture(dep_time, self.tram, self.stop))
+
+        # Deque next tram
+        if state.stops[self.stop].queue:
+            next_tram = state.stops[self.stop].queue.popleft()
+            events.schedule(TramArrival(dep_time, next_tram, self.stop))
 
     def __str__(self) -> str:
-        return "[{0.timestamp}] T_ARR: Tram {0.tram}, Stop {0.stop}, Nonstop {0.nonstop}".format(self)
+        return """{0}T_ARR
+        Tram: {1.tram}
+        Stop: {2}
+        """.format(super().__str__(), self, stop_names[self.stop])
 
 
 class TramDeparture(Event):
@@ -103,27 +157,19 @@ class TramDeparture(Event):
         self.stop = stop
 
     def handle(self, state, events):
-        return super().handle(state, events)
+        next_stop = (self.stop + 1) % (number_of_stops - 1)
+        driving_time = q if end_arr(self.stop) else gen_driving_time(self.stop)
+        events.schedule(
+            Enqueue(self.timestamp.shift(seconds=driving_time),
+                    tram=self.tram,
+                    stop=next_stop)
+        )
 
     def __str__(self) -> str:
-        return "[{0.timestamp}] T_DEP: Tram {0.tram}, Stop {0.stop}".format(self)
-
-
-class PassengerArrival(Event):
-    """Arrival of a passenger."""
-
-    def __init__(self, timestamp, stop):
-        super().__init__(timestamp)
-        self.stop = stop
-
-    def handle(self, state, events):
-        state.stop_capacity[self.stop] += 1
-        inter_time = gen_passenger_arrival(state)
-        events.schedule(PassengerArrival(inter_time, self.stop))
-        return super().handle(state, events)
-
-    def __str__(self) -> str:
-        return "[{0.timestamp}] P_ARR: Stop {0.stop}".format(self)
+        return """{0}T_DEP
+        Tram: {1.tram}
+        Stop: {2}
+        """.format(super().__str__(), self, stop_names[self.stop])
 
 
 class Events(object):
@@ -131,7 +177,7 @@ class Events(object):
 
     event_list = []
 
-    def schedule(self, *events):
+    def schedule(self, *events: [Event]):
         for event in events:
             self.event_list.append(event)
         self.event_list.sort(key=lambda e: e.timestamp.time.timestamp)
