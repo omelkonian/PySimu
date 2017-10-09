@@ -2,7 +2,21 @@
 
 To setup: `pip install sortedcontainers numpy arrow click`
 
-To execute: `python Main.py`
+To execute: 
+ ```bash
+ Usage: Main.py [OPTIONS]
+
+   Run simulation with given parameters (in seconds).
+
+ Options:
+   --edr INTEGER  Event display rate.
+   --sdr INTEGER  State display rate.
+   --q INTEGER    Turnaround time.
+   --f INTEGER    Tram frequency.
+   --c INTEGER    Tram capacity.
+   --dd INTEGER   Big departure delay.
+   --help         Show this message and exit.
+ ```
 
 # TODO
 - [x] Proper time representation
