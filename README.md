@@ -1,6 +1,6 @@
 # Simulation of the Uithoflijn
 
-To setup: `pip install sortedcontainers numpy arrow`
+To setup: `pip install sortedcontainers numpy arrow click`
 
 To execute: `python Main.py`
 
@@ -19,6 +19,7 @@ To execute: `python Main.py`
   * [x] Initial trams
   * [x] Additional trams when F_TOGGLE
 - [x] Performance measures
+- [x] Command-line interface
 - Stochastic Generators
   * [ ] Passenger inter-arrival times
   * [ ] Driving times, gamma distribution from data fitting

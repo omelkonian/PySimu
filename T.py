@@ -4,7 +4,7 @@ import arrow
 from arrow import Arrow
 from functools import partial
 
-from Constants import end_to_end_time, f
+# from Constants import end_to_end_time
 
 positive = partial(max, 0)
 
@@ -37,7 +37,7 @@ class Timetable(object):
     def next_schedule(self):
         return self.schedules.popleft()
 
-    def generate_other_direction(self):
+    def generate_other_direction(self, end_to_end_time, f):
         return Timetable(self.start, self.end, self.freq, offset=end_to_end_time % f)
 
     def __str__(self):

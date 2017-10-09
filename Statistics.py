@@ -11,12 +11,12 @@ class Statistics(object):
         }
         self.waiting = {"passengers": 0, "waiting_times": 0, "max": 0}
 
-    def update_punctuality(self, endstation, delay):
+    def update_punctuality(self, state, endstation, delay):
         self.punctuality[endstation]["schedules"] += 1
         self.punctuality[endstation]["delays"] += delay
         if delay > self.punctuality[endstation]["max"]:
             self.punctuality[endstation]["max"] = delay
-        if delay > DD:
+        if delay > state.dd:
             self.punctuality[endstation]["big_delays"] += 1
 
     def update_waiting(self, waiting_time):

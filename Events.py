@@ -106,9 +106,9 @@ class TramArrival(Event):
             return
 
         p_out = int(ceil(
-            1 if end_arr(self.stop) else gen_passenger_exit_percentage() * state.trams[self.tram].capacity))
+            (1 if end_arr(self.stop) else gen_passenger_exit_percentage()) * state.trams[self.tram].capacity))
         state.trams[self.tram].capacity -= p_out
-        p_in = min(c - state.stops[self.tram].capacity, state.stops[self.stop].capacity)
+        p_in = min(state.c - state.stops[self.tram].capacity, state.stops[self.stop].capacity)
         for _ in range(p_in):
             passenger_enters = state.stops[self.stop].arrivals.popleft()
             state.statistics.update_waiting((self.timestamp.time - passenger_enters.time).total_seconds())
@@ -133,7 +133,7 @@ class TramArrival(Event):
                 state.toggle_timetables()
                 next_schedule = state.timetable[self.stop].next_schedule()
             seconds_late = (self.timestamp.time - next_schedule.time).total_seconds()
-            state.statistics.update_punctuality(self.stop, max(0, seconds_late))
+            state.statistics.update_punctuality(state, self.stop, max(0, seconds_late))
             if seconds_late < 0:
                 dep_time = self.timestamp.shift(seconds=max(delay, -seconds_late))
 
@@ -161,7 +161,7 @@ class TramDeparture(Event):
 
     def handle(self, state, events):
         next_stop = (self.stop + 1) % number_of_stops
-        driving_time = q if end_arr(self.stop) else gen_driving_time(self.stop)
+        driving_time = state.q if end_arr(self.stop) else gen_driving_time(self.stop)
         events.schedule(
             Enqueue(self.timestamp.shift(seconds=driving_time), tram=self.tram, stop=next_stop))
 

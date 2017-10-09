@@ -1,9 +1,3 @@
-# Parameters
-q = 5 * 60  # Turnaround time
-f = 2  # Tram frequency
-c = 420  # Tram capacity
-DD = 60  # Departure delay threshold
-
 # Lambdas
 initial_l = 100  # Passenger arrival rate
 
@@ -40,8 +34,6 @@ driving_times = {
     k: v for k, v in zip(filter(lambda i: i != 8, range(number_of_stops - 1)),
                          [110, 78, 82, 60, 100, 59, 243, 135, 134, 243, 59, 101, 60, 86, 78, 113])
 }
-total_driving_time = 17 * 60
-end_to_end_time = q + total_driving_time
 
 # Endstations
 PR_DEP, PR_ARR, CS_DEP, CS_ARR = 0, 17, 9, 8

@@ -36,7 +36,15 @@ class Stop(object):
 
 class State(object):
     """State of the simulation"""
-    def __init__(self):
+    def __init__(self, q, f, c, dd):
+        # Parameters
+        self.q = q
+        self.f = f
+        self.c = c
+        self.dd = dd
+        self.total = q + (17 * 60)
+
+        # State variables
         self.end_simulation = False
         self.lambda_ = initial_l
         self.timetable_generator = self.gen_timetable()
@@ -57,7 +65,7 @@ class State(object):
         next_timetable = next(self.timetable_generator)
         self.timetable = {
             PR_DEP: next_timetable,
-            CS_DEP: next_timetable.generate_other_direction()
+            CS_DEP: next_timetable.generate_other_direction(self.total, self.f)
         }
 
     def __str__(self):

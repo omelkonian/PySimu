@@ -3,11 +3,13 @@ from Constants import driving_times
 
 
 def gen_passenger_arrival(state):
-    return np.random.randint(20, 40)
+    # return 3600
+    # return np.random.randint(20, 40)
     # return np.random.exponential(1/state.lambda_)
 
 
 def gen_driving_time(source):
+    # return driving_times[source]
     avg = driving_times[source]
     return np.random.uniform(avg - 20, avg + 20)
 
