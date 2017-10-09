@@ -1,13 +1,12 @@
-from collections import deque
-
 from Constants import *
 from T import *
+from Statistics import Statistics
 
 
 class Tram(object):
     """Representation of a tram."""
-    def __init__(self, id, nonstop=False):
-        self.id = id
+    def __init__(self, id_, nonstop=False):
+        self.id = id_
         self.capacity = 0
         self.nonstop = nonstop
 
@@ -45,6 +44,7 @@ class State(object):
         self.toggle_timetables()
         self.stops = [Stop(i) for i in range(number_of_stops)]
         self.trams = [Tram(i, nonstop=True) for i in range(0, 4)] + [Tram(i) for i in range(4, number_of_trams)]
+        self.statistics = Statistics()
 
     @staticmethod
     def gen_timetable():

@@ -14,3 +14,5 @@ while not state.end_simulation:
         print(state)
     i += 1
     j += 1
+
+print(state.statistics)

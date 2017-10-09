@@ -3,7 +3,7 @@ from Constants import driving_times
 
 
 def gen_passenger_arrival(state):
-    return np.random.randint(120, 240)
+    return np.random.randint(20, 40)
     # return np.random.exponential(1/state.lambda_)
 
 

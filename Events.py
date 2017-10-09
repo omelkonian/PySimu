@@ -1,4 +1,7 @@
 from abc import ABC, abstractmethod
+from sortedcontainers import SortedListWithKey
+
+from numpy.ma import ceil
 
 from Constants import *
 from StochasticVariables import *
@@ -102,12 +105,13 @@ class TramArrival(Event):
             events.schedule(TramDeparture(self.timestamp, self.tram, self.stop))
             return
 
-        p_out = (1 if end_arr(self.stop) else gen_passenger_exit_percentage()) * state.trams[self.tram].capacity
+        p_out = int(ceil(
+            1 if end_arr(self.stop) else gen_passenger_exit_percentage() * state.trams[self.tram].capacity))
         state.trams[self.tram].capacity -= p_out
         p_in = min(c - state.stops[self.tram].capacity, state.stops[self.stop].capacity)
         for _ in range(p_in):
             passenger_enters = state.stops[self.stop].arrivals.popleft()
-            # TODO update stats
+            state.statistics.update_waiting((self.timestamp.time - passenger_enters.time).total_seconds())
 
         state.trams[self.tram].capacity += p_in
 
@@ -128,11 +132,10 @@ class TramArrival(Event):
             except IndexError:
                 state.toggle_timetables()
                 next_schedule = state.timetable[self.stop].next_schedule()
-            minutes_late = (self.timestamp.time - next_schedule.time).total_seconds()
-            if minutes_late >= 0:
-                pass  # TODO update stats
-            elif minutes_late < 0:
-                dep_time = self.timestamp.shift(seconds=max(delay, -minutes_late))
+            seconds_late = (self.timestamp.time - next_schedule.time).total_seconds()
+            state.statistics.update_punctuality(self.stop, max(0, seconds_late))
+            if seconds_late < 0:
+                dep_time = self.timestamp.shift(seconds=max(delay, -seconds_late))
 
         events.schedule(TramDeparture(dep_time, self.tram, self.stop))
 
@@ -157,13 +160,10 @@ class TramDeparture(Event):
         self.stop = stop
 
     def handle(self, state, events):
-        next_stop = (self.stop + 1) % (number_of_stops - 1)
+        next_stop = (self.stop + 1) % number_of_stops
         driving_time = q if end_arr(self.stop) else gen_driving_time(self.stop)
         events.schedule(
-            Enqueue(self.timestamp.shift(seconds=driving_time),
-                    tram=self.tram,
-                    stop=next_stop)
-        )
+            Enqueue(self.timestamp.shift(seconds=driving_time), tram=self.tram, stop=next_stop))
 
     def __str__(self) -> str:
         return """{0}T_DEP
@@ -175,12 +175,10 @@ class TramDeparture(Event):
 class Events(object):
     """Event list, ordered in time."""
 
-    event_list = []
+    event_list = SortedListWithKey(key=lambda e: e.timestamp.time.timestamp)
 
     def schedule(self, *events: [Event]):
-        for event in events:
-            self.event_list.append(event)
-        self.event_list.sort(key=lambda e: e.timestamp.time.timestamp)
+        self.event_list.update(events)
 
     def next(self):
         return self.event_list.pop(0)

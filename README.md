@@ -1,4 +1,10 @@
-## TODO
+# Simulation of the Uithoflijn
+
+To setup: `pip install sortedcontainers numpy arrow`
+
+To execute: `python Main.py`
+
+# TODO
 - [x] Proper time representation
   * e.g. `int` -> `arrow.Arrow`
 - [x] Handlers
@@ -12,6 +18,7 @@
 - [x] Spawn algorithm
   * [x] Initial trams
   * [x] Additional trams when F_TOGGLE
+- [x] Performance measures
 - Stochastic Generators
   * [ ] Passenger inter-arrival times
   * [ ] Driving times, gamma distribution from data fitting

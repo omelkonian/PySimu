@@ -1,7 +1,8 @@
 # Parameters
 q = 5 * 60  # Turnaround time
-f = 4  # Tram frequency
+f = 2  # Tram frequency
 c = 420  # Tram capacity
+DD = 60  # Departure delay threshold
 
 # Lambdas
 initial_l = 100  # Passenger arrival rate
@@ -43,10 +44,6 @@ total_driving_time = 17 * 60
 end_to_end_time = q + total_driving_time
 
 # Endstations
-PR_DEP = 0
-PR_ARR = 17
-CS_DEP = 9
-CS_ARR = 8
-
+PR_DEP, PR_ARR, CS_DEP, CS_ARR = 0, 17, 9, 8
 end_dep = lambda stop: stop in [PR_DEP, CS_DEP]
 end_arr = lambda stop: stop in [PR_ARR, CS_ARR]

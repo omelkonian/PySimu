@@ -11,13 +11,11 @@ events = Events()
 # Schedule initial events
 events.schedule(*(
     [   # Simulation end
-        EndSim(T('07:00').shift(days=1)),
+        EndSim(T('00:00').shift(days=1)),
     ] +
-    [
-        # Rate changes
+    [   # Rate changes
         LChange(T('06:15:00').shift(minutes=15 * i), 10)
         for i in range(int((T('21:30:00').time - T('06:15:00').time).total_seconds() / 60 * 15))
-
     ] +
     [   # Initial CS trams
         Enqueue(T('05:40:00').shift(minutes=2 * tr), tram=tr, stop=PR_DEP)
