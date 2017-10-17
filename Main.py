@@ -1,9 +1,8 @@
 import click
-import matlab_wrapper
 
 from State import State
 from Events import Events
-from Constants import PR_DEP, number_of_trams, number_of_stops, next_lambda
+from Constants import PR_DEP, number_of_trams, number_of_stops
 from Events import EndSim, Enqueue, PassengerArrival, LChange
 from StochasticVariables import gen_passenger_arrival
 from T import T
@@ -34,14 +33,6 @@ def initial_events(state):
         PassengerArrival(T('06:00:00').shift(seconds=gen_passenger_arrival(state)), st)
         for st in range(number_of_stops)
     ]
-
-
-# def load_matlab_data(filename):
-#     matlab = matlab_wrapper.MatlabSession()
-#     matlab.eval(filename)
-#     [q, f, c, dd] = [matlab.get(param) for param in ['g', 'f', 'c', 'dd']]
-#     print([q, f, c, dd])
-#     return State(q, f, c, dd)
 
 
 @click.command()
