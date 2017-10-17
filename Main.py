@@ -1,8 +1,9 @@
 import click
+import matlab_wrapper
 
 from State import State
 from Events import Events
-from Constants import PR_DEP, number_of_trams, number_of_stops
+from Constants import PR_DEP, number_of_trams, number_of_stops, next_lambda
 from Events import EndSim, Enqueue, PassengerArrival, LChange
 from StochasticVariables import gen_passenger_arrival
 from T import T
@@ -14,7 +15,7 @@ def initial_events(state):
         EndSim(T('00:00').shift(days=1)),
     ] + [
         # Rate changes
-        LChange(T('06:15:00').shift(minutes=15 * i), 10)
+        LChange(T('06:15:00').shift(minutes=15 * i))
         for i in range(int((T('21:30:00').time - T('06:15:00').time).total_seconds() / 60 * 15))
     ] + [
         # Initial CS trams
@@ -35,6 +36,14 @@ def initial_events(state):
     ]
 
 
+# def load_matlab_data(filename):
+#     matlab = matlab_wrapper.MatlabSession()
+#     matlab.eval(filename)
+#     [q, f, c, dd] = [matlab.get(param) for param in ['g', 'f', 'c', 'dd']]
+#     print([q, f, c, dd])
+#     return State(q, f, c, dd)
+
+
 @click.command()
 @click.option('--edr', default=25, help='Event display rate.')
 @click.option('--sdr', default=50, help='State display rate.')
@@ -42,9 +51,10 @@ def initial_events(state):
 @click.option('--f', default=4, help='Tram frequency.')
 @click.option('--c', default=420, help='Tram capacity.')
 @click.option('--dd', default=60, help='Big departure delay.')
-def run(edr, sdr, q, f, c, dd):
+@click.option('--db', default=.05, help='Door block percentage.')
+def run(edr, sdr, q, f, c, dd, db):
     """Run simulation with given parameters (in seconds). """
-    state = State(q, f, c, dd)
+    state = State(q, f, c, dd, db)  # load_matlab_data('parameters')
     events = Events()
     events.schedule(*initial_events(state))
 

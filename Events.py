@@ -40,12 +40,8 @@ class EndSim(Event):
 class LChange(Event):
     """Change passenger arrival rate."""
 
-    def __init__(self, timestamp, new_l):
-        super().__init__(timestamp)
-        self.new_l = new_l
-
     def handle(self, state, events):
-        state.lambda_ = self.new_l
+        state.lambda_ = next_lambda()
 
     def __str__(self) -> str:
         return super().__str__() + "L_CHANGE"
@@ -119,7 +115,7 @@ class TramArrival(Event):
             0 if state.stops[self.stop].last_departure is None
             else (self.timestamp.time - state.stops[self.stop].last_departure.shift(seconds=40).time).total_seconds()
         )
-        dwell_time = gen_dwell_time(p_in, p_out)
+        dwell_time = gen_dwell_time(state, p_in, p_out)
 
         delay = max(wait_for_next_tram, dwell_time)
 
