@@ -62,7 +62,7 @@ class Statistics(object):
         return T('00:00:00').shift(seconds=seconds).time.format('HH:mm:ss')
 
     def __str__(self) -> str:
-        return """
+        return """\033[32;1m
         ************************************
         ************ STATISTICS ************
         ************************************
@@ -87,7 +87,7 @@ class Statistics(object):
              MAX: {7}
              
         ************************************
-        ************************************
+        ************************************\033[0m
         """.format(self.display_time(self.PR_avg), self.display_time(self.PR_max), self.PR_big,
                    self.display_time(self.CS_avg), self.display_time(self.CS_max), self.CS_big,
                    self.display_time(self.PA_avg), self.display_time(self.PA_max))

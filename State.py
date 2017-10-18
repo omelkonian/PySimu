@@ -1,17 +1,18 @@
+from math import floor, ceil
+
 from Constants import *
 from T import *
+from StochasticVariables import next_lambda, next_driving_parameter
 from Statistics import Statistics
 
 
 class Tram(object):
     """Representation of a tram."""
-    def __init__(self, id_, nonstop=False):
+    def __init__(self, id_, nonstop=None):
         self.id = id_
         self.capacity = 0
         self.nonstop = nonstop
-
-    def remove_nonstop(self):
-        self.nonstop = False
+        self.destroy = []
 
     def __str__(self):
         return "Tram {0.id} [{0.capacity}] {1}".format(self, "!NONSTOP" if self.nonstop else "")
@@ -24,6 +25,8 @@ class Stop(object):
         self.last_departure = None
         self.arrivals = deque()
         self.queue = deque()
+        self.predicted_until = None
+        self.to_destroy = 0
 
     @property
     def capacity(self):
@@ -43,36 +46,28 @@ class State(object):
         self.c = c
         self.dd = dd
         self.db = db
-        self.total = q + (17 * 60)
 
         # State variables
         self.end_simulation = False
-        self.lambda_ = next_lambda()
-        self.timetable_generator = self.gen_timetable()
-        self.timetable = {}
-        self.toggle_timetables()
-        self.stops = [Stop(i) for i in range(number_of_stops)]
-        self.trams = [Tram(i, nonstop=True) for i in range(0, 4)] + [Tram(i) for i in range(4, number_of_trams)]
+        self.lambdas = next_lambda()
+        self.driving_parameters = next_driving_parameter()
+        pr_tt = Timetable(starts=[T('06:00:00'), T('07:04:00'), T('19:15:00')],
+                          ends=[T('07:00:00'), T('19:00:00'), T('21:30:00')],
+                          freqs=[15, f, 15])
+        self.timetable = {PR_DEP: pr_tt, CS_DEP: pr_tt.generate_other_direction(2)}
+        self.time = None
         self.statistics = Statistics()
-
-    @staticmethod
-    def gen_timetable():
-        while True:
-            yield Timetable(T('06:00:00'), T('07:00:00'), freq=15)
-            yield Timetable(T('07:00:00'), T('19:00:00'), freq=4)
-            yield Timetable(T('19:00:00'), T('21:30:00'), freq=15)
-
-    def toggle_timetables(self):
-        next_timetable = next(self.timetable_generator)
-        self.timetable = {
-            PR_DEP: next_timetable,
-            CS_DEP: next_timetable.generate_other_direction(self.total, self.f)
-        }
+        self.stops = [Stop(i) for i in range(number_of_stops)]
+        self.initial_trams = floor(number_of_trams / floor(15/f))
+        if self.initial_trams % 2 != 0:
+            self.initial_trams = ceil(self.initial_trams)
+        it = int(self.initial_trams/2)
+        self.trams = [Tram(i, nonstop=CS_DEP) for i in range(it)] + [Tram(i) for i in range(it, number_of_trams)]
 
     def __str__(self):
-        ret = "============ STATE ============\nTRAMS:\n"
-        for i, tr in enumerate(self.trams):
-            ret += "\t{0}. {1}\n".format(i, str(tr))
+        ret = "\033[34;1m============ STATE ============\nTRAMS:\n"
+        for tr in self.trams:
+            ret += "\t{0}\n".format(str(tr))
         ret += "STOPS:\n"
         for st in self.stops:
             ret += "\t{}\n".format(str(st))
@@ -84,4 +79,16 @@ class State(object):
             ret += "\nTimetableCS: {}".format(self.timetable[CS_DEP].schedules[0])
         except IndexError:
             ret += "\nTimetableCS -"
-        return ret
+        return ret + "\033[1m"
+
+
+if __name__ == '__main__':
+    timetable = Timetable(starts=[T('06:00:00'), T('07:04:00'), T('19:15:00')],
+                          ends=[T('07:00:00'), T('19:00:00'), T('21:30:00')],
+                          freqs=[15, 4, 15])
+    timetable = {
+        PR_DEP: str(timetable),
+        CS_DEP: str(timetable.generate_other_direction(2))
+    }
+    import pprint
+    pprint.pprint(timetable)

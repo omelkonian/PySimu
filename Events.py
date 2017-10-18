@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from sortedcontainers import SortedListWithKey
-
-from numpy.ma import ceil
+from math import ceil, floor
 
 from Constants import *
 from StochasticVariables import *
@@ -16,8 +15,11 @@ class Event(ABC):
     def __init__(self, timestamp):
         self.timestamp = timestamp
 
-    def __str__(self):
-        return "[{.timestamp}] ".format(self)
+    def s(self, info):
+        return "\033[33;1m[{0.timestamp}]\t{1}\033[1m".format(self, info)
+
+    def __str__(self) -> str:
+        return self.s("")
 
     @abstractmethod
     def handle(self, state, events):
@@ -34,17 +36,33 @@ class EndSim(Event):
         state.end_simulation = True
 
     def __str__(self) -> str:
-        return super().__str__() + "END_SIM"
+        return self.s("END_SIM")
 
 
 class LChange(Event):
     """Change passenger arrival rate."""
 
     def handle(self, state, events):
-        state.lambda_ = next_lambda()
+        state.lambdas = next_lambda()
+        state.driving_parameters = next_driving_parameter()
 
     def __str__(self) -> str:
-        return super().__str__() + "L_CHANGE"
+        return self.s("L_CHANGE")
+
+
+class TramDestroy(Event):
+    """Destroy a tram."""
+
+    def __init__(self, timestamp, how_many):
+        super().__init__(timestamp)
+        self.how_many = how_many
+
+    def handle(self, state, events):
+        state.stops[PR_DEP].to_destroy = ceil(self.how_many/2)
+        state.stops[CS_DEP].to_destroy = floor(self.how_many / 2)
+
+    def __str__(self) -> str:
+        return self.s("T_DESTROY {}".format(self.how_many))
 
 
 class PassengerArrival(Event):
@@ -55,33 +73,48 @@ class PassengerArrival(Event):
         self.stop = stop
 
     def handle(self, state, events):
-        state.stops[self.stop].arrivals.append(self.timestamp)
-        inter_time = self.timestamp.shift(seconds=gen_passenger_arrival(state))
-        events.schedule(PassengerArrival(inter_time, self.stop))
+        if state.stops[self.stop].predicted_until is None \
+                or state.stops[self.stop].predicted_until.time < self.timestamp.time:
+            state.stops[self.stop].arrivals.append(self.timestamp)
+
+        # Stop arrivals after 22:00
+        if self.timestamp.time < T('22:00:00').time:
+            events.schedule(PassengerArrival(
+                self.timestamp.shift(seconds=gen_passenger_arrival(state, self.stop)), self.stop))
 
     def __str__(self) -> str:
-        return super().__str__() + "P_ARR, Stop: {0.stop}".format(self)
+        return self.s("P_ARR\t @{1}".format(self, stop_names[self.stop]))
 
 
 class Enqueue(Event):
     """Enqueue tram at entrance of stop."""
 
-    def __init__(self, timestamp, tram, stop):
+    def __init__(self, timestamp, tram, stop, nonstop=None):
         super().__init__(timestamp)
         self.tram = tram
         self.stop = stop
+        self.nonstop = nonstop
 
     def handle(self, state, events):
+        if end_dep(self.stop):
+            assert state.trams[self.tram].capacity == 0
+        if self.nonstop:
+            state.trams[self.tram].nonstop = self.nonstop
+
+        if end_dep(self.stop) and \
+           state.stops[self.stop].to_destroy > 0 and \
+           state.timetable[self.stop].peek_schedule().time > self.timestamp.shift(minutes=10).time:
+            print("DESTROYING TRAM {}".format(self.tram))
+            state.stops[self.stop].to_destroy -= 1
+            return
+
         if not state.stops[self.stop].queue:
             events.schedule(TramArrival(self.timestamp, self.tram, self.stop))
         else:
             state.stops[self.stop].queue.append(self.tram)
 
     def __str__(self):
-        return """{0}ENQUEUE
-        Tram: {1.tram}
-        Stop: {2}        
-        """.format(super().__str__(), self, stop_names[self.stop])
+        return self.s("ENQUEUE\t Tram {0} @ {1}".format(self.tram, stop_names[self.stop]))
 
 
 class TramArrival(Event):
@@ -91,60 +124,104 @@ class TramArrival(Event):
         super().__init__(timestamp)
         self.tram = tram
         self.stop = stop
+        self.late = None
+        self.po = None
 
     def handle(self, state, events):
-        if self.stop == CS_DEP:  # reset nonstop flags at CS
-            state.trams[self.tram].remove_nonstop()
-
+        # Reset nonstop flags
+        if state.trams[self.tram].nonstop and state.trams[self.tram].nonstop == self.stop:
+            state.trams[self.tram].nonstop = None
+        # Check nonstop flags
         if state.trams[self.tram].nonstop:
             assert state.trams[self.tram].capacity == 0
             events.schedule(TramDeparture(self.timestamp, self.tram, self.stop))
             return
 
-        p_out = int(ceil(
-            (1 if end_arr(self.stop) else gen_passenger_exit_percentage()) * state.trams[self.tram].capacity))
+        p_out_percentage = 1 if end_arr(self.stop) else (0 if end_dep(self.stop) else
+                                                         gen_passenger_exit_percentage(state, self.stop))
+        self.po = p_out_percentage
+        p_out = int(p_out_percentage * state.trams[self.tram].capacity)
         state.trams[self.tram].capacity -= p_out
-        p_in = min(state.c - state.stops[self.tram].capacity, state.stops[self.stop].capacity)
+        if end_arr(self.stop):
+            assert state.trams[self.tram].capacity == 0
+        # print("\033[31;1m - {}\033[0m".format(p_out))
+
+        p_in = min(state.c - state.trams[self.tram].capacity, state.stops[self.stop].capacity)
+        if end_arr(self.stop):
+            assert p_in == 0
+
         for _ in range(p_in):
-            passenger_enters = state.stops[self.stop].arrivals.popleft()
-            state.statistics.update_waiting((self.timestamp.time - passenger_enters.time).total_seconds())
+            passenger_arrived = state.stops[self.stop].arrivals.popleft()
+            state.statistics.update_waiting((self.timestamp.time - passenger_arrived.time).total_seconds())
 
         state.trams[self.tram].capacity += p_in
+        if end_arr(self.stop):
+            assert state.trams[self.tram].capacity == 0
+
+        # print("\033[32;1m + {}\033[0m".format(p_in))
 
         wait_for_next_tram = positive(
             0 if state.stops[self.stop].last_departure is None
             else (self.timestamp.time - state.stops[self.stop].last_departure.shift(seconds=40).time).total_seconds()
         )
         dwell_time = gen_dwell_time(state, p_in, p_out)
-
         delay = max(wait_for_next_tram, dwell_time)
-
-        # TODO turnaround -- if end_arr(self.stop)
-
         dep_time = self.timestamp.shift(seconds=delay)
+
+        # Intermediate passenger
+        p_in_intermediate = min(state.c - state.trams[self.tram].capacity,
+                                gen_passenger_arrival(state, self.stop, total=delay))
+        if end_arr(self.stop):
+            assert p_in_intermediate == 0
+
+        state.trams[self.tram].capacity += p_in_intermediate
+        for _ in range(p_in_intermediate):
+            state.statistics.update_waiting(0)
+        # print("\033[33;1m + {}\033[0m".format(p_in_intermediate))
+
+        state.stops[self.stop].predicted_until = dep_time
+
+        destroy_tram = False
         if end_dep(self.stop):
+            # print('{}: {}'.format(self.stop, len(state.timetable[self.stop].schedules)))
             try:
                 next_schedule = state.timetable[self.stop].next_schedule()
+                seconds_late = (self.timestamp.time - next_schedule.time).total_seconds()
+                state.statistics.update_punctuality(state, self.stop, max(0, seconds_late))
+                if seconds_late < 0:
+                    dep_time = self.timestamp.shift(seconds=max(delay, -seconds_late))
+                self.late = seconds_late
             except IndexError:
-                state.toggle_timetables()
-                next_schedule = state.timetable[self.stop].next_schedule()
-            seconds_late = (self.timestamp.time - next_schedule.time).total_seconds()
-            state.statistics.update_punctuality(state, self.stop, max(0, seconds_late))
-            if seconds_late < 0:
-                dep_time = self.timestamp.shift(seconds=max(delay, -seconds_late))
+                destroy_tram = True
 
-        events.schedule(TramDeparture(dep_time, self.tram, self.stop))
+        if not destroy_tram:
+            if end_arr(self.stop):
+                assert state.trams[self.tram].capacity == 0
+            events.schedule(TramDeparture(dep_time, self.tram, self.stop))
 
         # Deque next tram
         if state.stops[self.stop].queue:
             next_tram = state.stops[self.stop].queue.popleft()
             events.schedule(TramArrival(dep_time, next_tram, self.stop))
 
+        # print(state.trams[self.tram].capacity)
+
     def __str__(self) -> str:
-        return """{0}T_ARR
-        Tram: {1.tram}
-        Stop: {2}
-        """.format(super().__str__(), self, stop_names[self.stop])
+        if self.late is None:
+            late = ''
+        elif self.late == 0:
+            late = '\033[32;1m0' + '\033[1m'
+        elif self.late < 0:
+            late = '\033[32;1m-' + tt(-self.late) + '\033[1m'
+        elif self.late > 0:
+            late = '\033[31;1m+' + tt(self.late) + '\033[1m'
+
+        if self.po is None:
+            po = ''
+        else:
+            po = '\033[34;1m' + str(round(self.po, 4)) + '%\033[1m'
+
+        return self.s("T_ARR\t\tTram {0}\t\t@{1}\t\t{2}\t\t{3}".format(self.tram, stop_names[self.stop], po, late))
 
 
 class TramDeparture(Event):
@@ -154,18 +231,30 @@ class TramDeparture(Event):
         super().__init__(timestamp)
         self.tram = tram
         self.stop = stop
+        self.deviation = None
 
     def handle(self, state, events):
         next_stop = (self.stop + 1) % number_of_stops
-        driving_time = state.q if end_arr(self.stop) else gen_driving_time(self.stop)
+        if end_dep(next_stop):
+            assert state.trams[self.tram].capacity == 0
+        driving_time = (state.q * 60) if end_arr(self.stop) else gen_driving_time(self.stop)
+        try:
+            self.deviation = driving_time - avg_driving_times[self.stop]
+        except:
+            pass
         events.schedule(
             Enqueue(self.timestamp.shift(seconds=driving_time), tram=self.tram, stop=next_stop))
 
     def __str__(self) -> str:
-        return """{0}T_DEP
-        Tram: {1.tram}
-        Stop: {2}
-        """.format(super().__str__(), self, stop_names[self.stop])
+        if self.deviation is None:
+            t = ''
+        elif self.deviation == 0:
+            t = '\033[32;1m- 0'
+        elif self.deviation < 0:
+            t = '\033[32;1m- ' + tt(-self.deviation)
+        elif self.deviation > 0:
+            t = '\033[31;1m+ ' + tt(self.deviation)
+        return self.s("T_DEP\t\tTram {0}\t\t@{1}\t\t{2}".format(self.tram, stop_names[self.stop], t))
 
 
 class Events(object):
