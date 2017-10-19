@@ -19,10 +19,11 @@ class Statistics(object):
         if delay > state.dd:
             self.punctuality[endstation]["big_delays"] += 1
 
-    def update_waiting(self, waiting_time):
+    def update_waiting(self, waiting_time, stop, t):
         self.waiting["passengers"] += 1
         self.waiting["waiting_times"] += waiting_time
         if waiting_time > self.waiting["max"]:
+            # print('[{}]: {} + {}'.format(t, stop_names[stop], colored('red', waiting_time)))
             self.waiting["max"] = waiting_time
 
     @property
@@ -58,11 +59,12 @@ class Statistics(object):
         return self.waiting["waiting_times"] / self.waiting["passengers"]
 
     @staticmethod
-    def display_time(seconds):
+    def dt(seconds):
+        assert seconds < 5000
         return T('00:00:00').shift(seconds=seconds).time.format('HH:mm:ss')
 
     def __str__(self) -> str:
-        return """\033[32;1m
+        return colored('green', """
         ************************************
         ************ STATISTICS ************
         ************************************
@@ -87,9 +89,11 @@ class Statistics(object):
              MAX: {7}
              
         ************************************
-        ************************************\033[0m
-        """.format(self.display_time(self.PR_avg), self.display_time(self.PR_max), self.PR_big,
-                   self.display_time(self.CS_avg), self.display_time(self.CS_max), self.CS_big,
-                   self.display_time(self.PA_avg), self.display_time(self.PA_max))
+        ************************************
+        """.format(self.dt(self.PR_avg), self.dt(self.PR_max), self.PR_big,
+                   self.dt(self.CS_avg), self.dt(self.CS_max), self.CS_big,
+                   self.dt(self.PA_avg), self.dt(self.PA_max)))
+
+#    self.display_time(self.PA_avg)
 
 

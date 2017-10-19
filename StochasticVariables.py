@@ -1,33 +1,26 @@
 import numpy as np
 from collections import deque
 
-from Constants import avg_driving_times, number_of_stops, end_arr
+from Constants import avg_driving_times, end_arr
 
 
-# Helpers
-def index_stop(index):
-    return {
-        x: ((int(number_of_stops / 2) - 1 - x) if x < 9 else (x - int(number_of_stops / 2))) for x in range(18)
-    }[index]
-
-
-# Driving times
+# Get data from CSV files produces by Matlab scripts
 gamma_shape = np.loadtxt('matlab/gamma_shape.csv').tolist()
+lambdas = deque(np.loadtxt('matlab/pin_lambdas.csv', delimiter=',').tolist())
+next_lambda = lambda: lambdas.popleft()
+driving_parameters = deque([(a[0], a[1]) for a in np.loadtxt('matlab/pin_lambdas.csv', delimiter=',').tolist()])
 
 
+# Driving time
 def gen_driving_time(source):
     return np.random.gamma(shape=gamma_shape, scale=avg_driving_times[source]/gamma_shape)
 
 
 # Passenger In
-lambdas = deque(np.loadtxt('matlab/pin_lambdas.csv', delimiter=',').tolist())
-next_lambda = lambda: lambdas.popleft()
-
-
 def gen_passenger_arrival(state, stop, total=None):
     if end_arr(stop) and total:
         return 0
-    lambda_per_second = state.lambdas[index_stop(stop)]/(15 * 60)
+    lambda_per_second = state.lambdas[stop]/(15 * 60)
     if total is None:
         distr = lambda l: np.random.exponential(1/l)
     else:
@@ -41,18 +34,10 @@ def gen_passenger_arrival(state, stop, total=None):
 
 
 # Passenger Out
-driving_parameters = deque(
-    map(lambda i: [(x, y) for x in i[0] for y in i[1]],
-        zip(np.loadtxt('matlab/pout_a.csv', delimiter=',').tolist(),
-            np.loadtxt('matlab/pout_b.csv', delimiter=',').tolist())))
-next_driving_parameter = lambda: driving_parameters.popleft()
-
-
-def gen_passenger_exit_percentage(state, stop):
-    a, b = state.driving_parameters[index_stop(stop)]
+def gen_passenger_exit_percentage(stop):
+    a, b = driving_parameters[stop]
     if a == 0 or b == 0:
         return 0
-    # return np.random.uniform(0, 1)
     return np.random.beta(a, b)
 
 

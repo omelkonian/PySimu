@@ -2,7 +2,7 @@ from math import floor, ceil
 
 from Constants import *
 from T import *
-from StochasticVariables import next_lambda, next_driving_parameter
+from StochasticVariables import next_lambda
 from Statistics import Statistics
 
 
@@ -13,9 +13,11 @@ class Tram(object):
         self.capacity = 0
         self.nonstop = nonstop
         self.destroy = []
+        self.stop = None
 
     def __str__(self):
-        return "Tram {0.id} [{0.capacity}] {1}".format(self, "!NONSTOP" if self.nonstop else "")
+        return "Tram {0.id} [{0.capacity}] {1} @{2}".format(
+            self, "!NONSTOP" if self.nonstop else "", stop_names[self.stop] if self.stop else '-')
 
 
 class Stop(object):
@@ -50,11 +52,10 @@ class State(object):
         # State variables
         self.end_simulation = False
         self.lambdas = next_lambda()
-        self.driving_parameters = next_driving_parameter()
         pr_tt = Timetable(starts=[T('06:00:00'), T('07:04:00'), T('19:15:00')],
                           ends=[T('07:00:00'), T('19:00:00'), T('21:30:00')],
                           freqs=[15, f, 15])
-        self.timetable = {PR_DEP: pr_tt, CS_DEP: pr_tt.generate_other_direction(2)}
+        self.timetable = {PR_DEP: pr_tt, CS_DEP: pr_tt.generate_other_direction((q + end_to_end_time) % f)}
         self.time = None
         self.statistics = Statistics()
         self.stops = [Stop(i) for i in range(number_of_stops)]
@@ -65,7 +66,7 @@ class State(object):
         self.trams = [Tram(i, nonstop=CS_DEP) for i in range(it)] + [Tram(i) for i in range(it, number_of_trams)]
 
     def __str__(self):
-        ret = "\033[34;1m============ STATE ============\nTRAMS:\n"
+        ret = "============ [{}] STATE ============\nTRAMS:\n".format(self.time)
         for tr in self.trams:
             ret += "\t{0}\n".format(str(tr))
         ret += "STOPS:\n"
@@ -79,7 +80,7 @@ class State(object):
             ret += "\nTimetableCS: {}".format(self.timetable[CS_DEP].schedules[0])
         except IndexError:
             ret += "\nTimetableCS -"
-        return ret + "\033[1m"
+        return colored('blue', ret)
 
 
 if __name__ == '__main__':
@@ -88,7 +89,7 @@ if __name__ == '__main__':
                           freqs=[15, 4, 15])
     timetable = {
         PR_DEP: str(timetable),
-        CS_DEP: str(timetable.generate_other_direction(2))
+        CS_DEP: str(timetable.generate_other_direction((5 + 17) % 4))
     }
     import pprint
     pprint.pprint(timetable)

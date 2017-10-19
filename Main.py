@@ -24,18 +24,20 @@ def initial_events(state):
         for tr in range(it)
     ] + [
         # Peak trams
-        Enqueue(T('07:00:00').shift(minutes=-(state.q + end_to_end_time) if tr % 2 else 0),
-                tram=tr + state.initial_trams, stop=PR_DEP, nonstop=(CS_DEP if tr % 2 else None))
+        Enqueue(T('07:00:00').shift(minutes=-(state.q + end_to_end_time) if tr % 2 else 0).shift(),
+                tram=tr + state.initial_trams,
+                stop=PR_DEP,
+                nonstop=(CS_DEP if tr % 2 else None))
         for tr in range(number_of_trams - (2 * it))
     ] + [
-        # Tram destruction
-        TramDestroy(T('18:50:00'), number_of_trams - state.initial_trams)
-    ] + [
+        # Destroy trams in the evening
+        TramDestroy(T('19:00:00'), number_of_trams - state.initial_trams)
+    ] + sum([[
         # Initial passengers
-        PassengerArrival(T('06:00:00'), st)
-        for st in range(number_of_stops)
+        PassengerArrival(T('06:00:00').shift(minutes=2 * st), st + offset)
+        for st in range(0, 9)
         if not end_arr(st)
-    ]
+    ] for offset in [0, 9]], [])
 
 
 @click.command()
@@ -52,7 +54,7 @@ def initial_events(state):
 @click.option('--start', '-s', default=None, help="Start simulation later.")
 @click.option('--end', '-e', default=None, help="End simulation earlier.")
 @click.option('--show_all', '-A', default=None, help="Show all events.")
-@click.option('--etype', '-t', default=None, help="Filter on event type.")
+@click.option('--etype', '-t', default='', help="Filter on event type.")
 def run(edr, sdr, q, f, c, dd, db, track_tram, track_stop, only_passengers, start, end, show_all, etype):
     """Run simulation with given parameters (in seconds). """
     state = State(q, f, c, dd, db)
@@ -65,7 +67,6 @@ def run(edr, sdr, q, f, c, dd, db, track_tram, track_stop, only_passengers, star
     i = 0
     while not state.end_simulation:
         event = events.next()
-        state.time = event.timestamp
         event.handle(state, events)
 
         constraints = [i % edr == 0]
@@ -81,8 +82,7 @@ def run(edr, sdr, q, f, c, dd, db, track_tram, track_stop, only_passengers, star
         if start:
             constraints.append(event.timestamp.time >= T(start).time)
 
-        if etype:
-            constraints.append(type(event).__name__ == etype)
+        constraints.append(type(event).__name__ in str.split(etype, ','))
 
         if all(constraints) or show_all:
             print(event)

@@ -22,3 +22,9 @@ avg_driving_times = {
 }
 
 end_to_end_time = 17
+
+
+# Color output
+def colored(color, s):
+    color_code = {'red': 31, 'green': 32, 'yellow': 33, 'blue': 34, }[color]
+    return "\033[{0};1m{1}\033[0m".format(color_code, s)
