@@ -6,24 +6,31 @@ class Statistics(object):
 
     def __init__(self):
         self.punctuality = {
-            PR_DEP: {"schedules": 0, "delays": 0, "max": 0, "big_delays": 0},
-            CS_DEP: {"schedules": 0, "delays": 0, "max": 0, "big_delays": 0},
+            PR_DEP: {"count": 0, "sum": 0, "max": 0, "big": 0},
+            CS_DEP: {"count": 0, "sum": 0, "max": 0, "big": 0},
         }
-        self.waiting = {"passengers": 0, "waiting_times": 0, "max": 0}
+        self.waiting = {"count": 0, "sum": 0, "max": 0, "big": 0}
+        self.stops = {"count": 0, "sum": 0}
 
     def update_punctuality(self, state, endstation, delay):
-        self.punctuality[endstation]["schedules"] += 1
-        self.punctuality[endstation]["delays"] += delay
+        self.punctuality[endstation]["count"] += 1
+        self.punctuality[endstation]["sum"] += delay
         if delay > self.punctuality[endstation]["max"]:
             self.punctuality[endstation]["max"] = delay
         if delay > state.dd:
-            self.punctuality[endstation]["big_delays"] += 1
+            self.punctuality[endstation]["big"] += 1
 
     def update_waiting(self, waiting_time, t, stop, state):
-        self.waiting["passengers"] += 1
-        self.waiting["waiting_times"] += waiting_time
+        self.waiting["count"] += 1
+        self.waiting["sum"] += waiting_time
         if waiting_time > self.waiting["max"]:
             self.waiting["max"] = waiting_time
+        if waiting_time > state.wt:
+            self.waiting["big"] += 1
+
+    def update_stop_capacity(self, current_cap):
+        self.stops["count"] += 1
+        self.stops["sum"] += current_cap
 
     @property
     def PR_max(self):
@@ -31,11 +38,11 @@ class Statistics(object):
 
     @property
     def PR_avg(self):
-        return self.punctuality[PR_DEP]["delays"] / self.punctuality[PR_DEP]["schedules"]
+        return self.punctuality[PR_DEP]["sum"] / self.punctuality[PR_DEP]["count"]
 
     @property
     def PR_big(self):
-        return self.punctuality[PR_DEP]["big_delays"] / self.punctuality[PR_DEP]["schedules"]
+        return self.punctuality[PR_DEP]["big"] / self.punctuality[PR_DEP]["count"]
 
     @property
     def CS_max(self):
@@ -43,11 +50,11 @@ class Statistics(object):
 
     @property
     def CS_avg(self):
-        return self.punctuality[CS_DEP]["delays"] / self.punctuality[CS_DEP]["schedules"]
+        return self.punctuality[CS_DEP]["sum"] / self.punctuality[CS_DEP]["count"]
 
     @property
     def CS_big(self):
-        return self.punctuality[CS_DEP]["big_delays"] / self.punctuality[CS_DEP]["schedules"]
+        return self.punctuality[CS_DEP]["big"] / self.punctuality[CS_DEP]["count"]
 
     @property
     def PA_max(self):
@@ -55,7 +62,15 @@ class Statistics(object):
 
     @property
     def PA_avg(self):
-        return self.waiting["waiting_times"] / self.waiting["passengers"]
+        return self.waiting["sum"] / self.waiting["count"]
+
+    @property
+    def PA_big(self):
+        return self.waiting["big"] / self.waiting["count"]
+
+    @property
+    def ST_avg(self):
+        return self.stops["sum"] / self.stops["count"]
 
     @staticmethod
     def dt(seconds):
@@ -85,9 +100,17 @@ class Statistics(object):
         
              AVG: {6}
              MAX: {7}
+             BIG: {8:.2%}
+             
+             ---------------------------
+             --------- STOP_CAP --------
+             ---------------------------
+             
+             AVG: {9:.2f}
              
         ************************************
         ************************************
         """.format(self.dt(self.PR_avg), self.dt(self.PR_max), self.PR_big,
                    self.dt(self.CS_avg), self.dt(self.CS_max), self.CS_big,
-                   self.dt(self.PA_avg), self.dt(self.PA_max)))
+                   self.dt(self.PA_avg), self.dt(self.PA_max), self.PA_big,
+                   self.ST_avg))

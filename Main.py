@@ -19,11 +19,11 @@ def initial_events(state):
         for i in range(4 * 15)
     ] + [
         # Initial trams (CS)
-        Enqueue(T('05:30:00').shift(minutes=15 * tr), tram=tr, stop=PR_DEP, nonstop=CS_DEP)
+        Enqueue(T('05:30:00').shift(minutes=offpeak_f * tr), tram=tr, stop=PR_DEP, nonstop=CS_DEP)
         for tr in range(it)
     ] + [
         # Initial trams (PR)
-        Enqueue(T('06:00:00').shift(minutes=15 * tr), tram=tr + it, stop=PR_DEP)
+        Enqueue(T('06:00:00').shift(minutes=offpeak_f * tr), tram=tr + it, stop=PR_DEP)
         for tr in range(it)
     ] + [
         # Peak trams (CS)
@@ -45,14 +45,16 @@ def initial_events(state):
 
 
 @click.command()
-@click.option('-edr', default=None, help='Event display rate.')
-@click.option('-sdr', default=None, help='State display rate.')
+# Parameters
 @click.option('-q', default=5, help='Turnaround time (in minutes).')
 @click.option('-f', default=4, help='Tram frequency (every <f> minutes).')
-@click.option('-c', default=420, help='Tram capacity.')
 @click.option('-dd', default=60, help='Big departure delay (in seconds).')
+@click.option('-wt', default=None, help='Big waiting time (in seconds).')
 @click.option('-db', default=.03, help='Door block percentage.')
 @click.option('-sd', default=40, help="Switch delay (in seconds).")
+# Display
+@click.option('-edr', default=None, help='Event display rate.')
+@click.option('-sdr', default=None, help='State display rate.')
 @click.option('--track_tram', '-tt', default=None, help="Track specific tram's events.")
 @click.option('--track_stop', '-ts', default=None, help="Track specific stop's events.")
 @click.option('--only_passengers', '-p', type=bool, default=False, help="Display only passengers' events.")
@@ -60,9 +62,10 @@ def initial_events(state):
 @click.option('--end', '-e', default=None, help="End simulation earlier.")
 @click.option('--show_all', '-A', default=None, help="Show all events.")
 @click.option('--etype', '-t', default='', help="Filter on event type.")
-def run(edr, sdr, q, f, c, dd, db, sd, track_tram, track_stop, only_passengers, start, end, show_all, etype):
+def run(edr, sdr, q, f, dd, wt, db, sd, track_tram, track_stop, only_passengers, start, end, show_all, etype):
     """Run simulation with given parameters (in seconds). """
-    state = State(q, f, c, dd, db, sd)
+    wt = wt or f * 60
+    state = State(q, f, dd, wt, db, sd)
     events = Events()
     events.schedule(*initial_events(state))
 

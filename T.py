@@ -4,6 +4,8 @@ import arrow
 from arrow import Arrow
 from functools import partial
 
+from Constants import offpeak_f
+
 positive = partial(max, 0)
 
 
@@ -60,7 +62,7 @@ def tt(secs):
 if __name__ == '__main__':
     from pprint import pprint
     pprint([
-         (i, str(T('06:00:00').shift(minutes=15 * i)))
+         (i, str(T('06:00:00').shift(minutes=offpeak_f * i)))
          for i in range(4 * 16)
      ])
 

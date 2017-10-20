@@ -36,17 +36,25 @@ class Tram(object):
 class Stop(object):
     """Representation of a tram stop."""
     def __init__(self, index):
+        self.id = index
         self.name = stop_names[index]
         self.last_departure = None
         self.arrivals = deque()
+        self.capacity = 0
         self.queue = deque()
         self.predicted_until = None
         self.to_destroy = 0
         self.parked_tram = None
 
-    @property
-    def capacity(self):
-        return len(self.arrivals)
+    def enter(self, timestamp, state):
+        self.arrivals.append(timestamp)
+        self.capacity += 1
+        state.statistics.update_stop_capacity(self.capacity)
+
+    def leave(self, state):
+        self.capacity -= 1
+        state.statistics.update_stop_capacity(self.capacity)
+        return self.arrivals.popleft()
 
     def __str__(self):
         return """{0.name} [{0.capacity}] @{0.last_departure} Arr: {1} Queue: {2}""".format(
@@ -55,12 +63,12 @@ class Stop(object):
 
 class State(object):
     """State of the simulation"""
-    def __init__(self, q, f, c, dd, db, sd):
+    def __init__(self, q, f, dd, wt, db, sd):
         # Parameters
         self.q = q
         self.f = f
-        self.c = c
         self.dd = dd
+        self.wt = wt
         self.db = db
         self.switch_delay = sd
 
@@ -69,13 +77,13 @@ class State(object):
         self.lambdas = next_lambda()
         pr_tt = Timetable(starts=[T('06:00:00'), T('07:04:00'), T('19:15:00')],
                           ends=[T('07:00:00'), T('19:00:00'), T('21:30:00')],
-                          freqs=[15, f, 15])
+                          freqs=[offpeak_f, f, offpeak_f])
         self.timetable = {PR_DEP: pr_tt, CS_DEP: pr_tt.generate_other_direction((q + end_to_end_time) % f)}
         self.time = None
         self.statistics = Statistics()
         self.stops = [Stop(i) for i in range(number_of_stops)]
         self.trams = [Tram(i) for i in range(number_of_trams)]
-        self.initial_trams = int(floor(number_of_trams / floor(15/f)))
+        self.initial_trams = int(floor(number_of_trams / floor(offpeak_f/f)))
         if self.initial_trams % 2 != 0:
             self.initial_trams = ceil(self.initial_trams)
         self.switches = {'P+R': None, 'CS': None}

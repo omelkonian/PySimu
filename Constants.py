@@ -1,6 +1,9 @@
 # Trams
+C = 420
 number_of_trams = 13
 safety_time = 40
+offpeak_f = 15
+traverse_switch_time = 0
 
 # Stops
 stop_names = [
