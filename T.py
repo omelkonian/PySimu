@@ -9,7 +9,7 @@ positive = partial(max, 0)
 
 class T(object):
 
-    def __init__(self, time_string='', time=None):
+    def __init__(self, time_string='00:00', time=None):
         self.time = time or arrow.get('2017-01-01T' + time_string)
 
     def copy(self):
@@ -36,7 +36,10 @@ class Timetable(object):
             self.schedules.extend([start.shift(minutes=offset + (freq * i)) for i in range(between + 1)])
 
     def peek_schedule(self):
-        return self.schedules[0]
+        try:
+            return self.schedules[0]
+        except IndexError:
+            return T().shift(days=1)
 
     def next_schedule(self):
         return self.schedules.popleft()

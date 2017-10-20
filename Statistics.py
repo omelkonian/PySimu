@@ -19,11 +19,13 @@ class Statistics(object):
         if delay > state.dd:
             self.punctuality[endstation]["big_delays"] += 1
 
-    def update_waiting(self, waiting_time, stop, t):
+    def update_waiting(self, waiting_time, t, stop, state):
         self.waiting["passengers"] += 1
         self.waiting["waiting_times"] += waiting_time
         if waiting_time > self.waiting["max"]:
-            # print('[{}]: {} + {}'.format(t, stop_names[stop], colored('red', waiting_time)))
+            # if waiting_time > 3000:
+            #     print(state)
+            print('[{}]: {} + {}'.format(t, stop_names[stop], colored('red', waiting_time)))
             self.waiting["max"] = waiting_time
 
     @property
@@ -60,7 +62,7 @@ class Statistics(object):
 
     @staticmethod
     def dt(seconds):
-        assert seconds < 5000
+        # assert seconds < 5000
         return T('00:00:00').shift(seconds=seconds).time.format('HH:mm:ss')
 
     def __str__(self) -> str:
@@ -93,7 +95,3 @@ class Statistics(object):
         """.format(self.dt(self.PR_avg), self.dt(self.PR_max), self.PR_big,
                    self.dt(self.CS_avg), self.dt(self.CS_max), self.CS_big,
                    self.dt(self.PA_avg), self.dt(self.PA_max)))
-
-#    self.display_time(self.PA_avg)
-
-

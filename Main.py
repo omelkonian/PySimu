@@ -16,7 +16,7 @@ def initial_events(state):
         for i in range(4 * 15)
     ] + [
         # Initial CS trams
-        Enqueue(T('05:40:00').shift(minutes=15 * tr), tram=tr, stop=PR_DEP)
+        Enqueue(T('05:30:00').shift(minutes=15 * tr), tram=tr, stop=PR_DEP)
         for tr in range(it)
     ] + [
         # Initial PR trams
@@ -31,7 +31,7 @@ def initial_events(state):
         for tr in range(number_of_trams - (2 * it))
     ] + [
         # Destroy trams in the evening
-        TramDestroy(T('19:00:00'), number_of_trams - state.initial_trams)
+        TramDestroy(T('23:00:00'), number_of_trams - state.initial_trams)
     ] + sum([[
         # Initial passengers
         PassengerArrival(T('06:00:00').shift(minutes=2 * st), st + offset)
@@ -41,13 +41,14 @@ def initial_events(state):
 
 
 @click.command()
-@click.option('-edr', default=1, help='Event display rate.')
+@click.option('-edr', default=None, help='Event display rate.')
 @click.option('-sdr', default=None, help='State display rate.')
-@click.option('-q', default=5, help='Turnaround time.')
-@click.option('-f', default=4, help='Tram frequency.')
+@click.option('-q', default=5, help='Turnaround time (in minutes).')
+@click.option('-f', default=4, help='Tram frequency (every <f> minutes).')
 @click.option('-c', default=420, help='Tram capacity.')
-@click.option('-dd', default=60, help='Big departure delay.')
-@click.option('-db', default=.05, help='Door block percentage.')
+@click.option('-dd', default=60, help='Big departure delay (in seconds).')
+@click.option('-db', default=.03, help='Door block percentage.')
+@click.option('-sd', default=40, help="Switch delay (in seconds).")
 @click.option('--track_tram', '-tt', default=None, help="Track specific tram's events.")
 @click.option('--track_stop', '-ts', default=None, help="Track specific stop's events.")
 @click.option('--only_passengers', '-p', type=bool, default=False, help="Display only passengers' events.")
@@ -55,9 +56,9 @@ def initial_events(state):
 @click.option('--end', '-e', default=None, help="End simulation earlier.")
 @click.option('--show_all', '-A', default=None, help="Show all events.")
 @click.option('--etype', '-t', default='', help="Filter on event type.")
-def run(edr, sdr, q, f, c, dd, db, track_tram, track_stop, only_passengers, start, end, show_all, etype):
+def run(edr, sdr, q, f, c, dd, db, sd, track_tram, track_stop, only_passengers, start, end, show_all, etype):
     """Run simulation with given parameters (in seconds). """
-    state = State(q, f, c, dd, db)
+    state = State(q, f, c, dd, db, sd)
     events = Events()
     events.schedule(*initial_events(state))
 
@@ -69,27 +70,27 @@ def run(edr, sdr, q, f, c, dd, db, track_tram, track_stop, only_passengers, star
         event = events.next()
         event.handle(state, events)
 
-        constraints = [i % edr == 0]
+        constraints = []
         if track_tram:
             constraints.append((any([isinstance(event, t) for t in [TramArrival, TramDeparture, Enqueue]]))
-                               and (event.tram == int(track_tram)))
+                               and event.tram in map(int, str.split(track_tram, ',')))
         if track_stop:
             constraints.append(not any([isinstance(event, t) for t in [EndSim, LChange, TramDestroy]])
-                               and (event.stop == int(track_stop)))
+                               and event.stop in map (int, str.split(track_stop, ',')))
         if only_passengers:
             constraints.append(isinstance(event, PassengerArrival))
 
         if start:
             constraints.append(event.timestamp.time >= T(start).time)
 
-        constraints.append(type(event).__name__ in str.split(etype, ','))
+        if etype != '':
+            constraints.append(any(filter(lambda s: type(event).__name__.startswith(s), str.split(etype, ','))))
 
         if all(constraints) or show_all:
-            print(event)
-
-        if sdr and i % int(sdr) == 0:
-            print(state)
-
+            if edr and i % int(edr) == 0:
+                print(event)
+            if sdr and i % int(sdr) == 0:
+                print(state)
         i += 1
     print(state.statistics)
 

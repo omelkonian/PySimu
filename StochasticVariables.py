@@ -1,8 +1,7 @@
 import numpy as np
 from collections import deque
 
-from Constants import avg_driving_times, end_arr
-
+from Constants import avg_driving_times, door_block_time
 
 # Get data from CSV files produces by Matlab scripts
 gamma_shape = np.loadtxt('matlab/gamma_shape.csv').tolist()
@@ -17,16 +16,10 @@ def gen_driving_time(source):
 
 
 # Passenger In
-def gen_passenger_arrival(state, stop, total=None):
-    if end_arr(stop) and total:
-        return 0
+def gen_passenger_arrival(state, stop):
     lambda_per_second = state.lambdas[stop]/(15 * 60)
-    if total is None:
-        distr = lambda l: np.random.exponential(1/l)
-    else:
-        distr = lambda l: np.random.poisson(l * total)
-    if lambda_per_second > 0.01:
-        return distr(lambda_per_second)
+    if lambda_per_second > 0.02:
+        return np.random.exponential(1/lambda_per_second)
     else:
         mins = state.time.time.minute
         next_quarter = int(np.floor(mins / 15)) + 1
@@ -45,10 +38,12 @@ def gen_passenger_exit_percentage(stop):
 def gen_dwell_time(state, p_in, p_out):
     assert p_in >= 0
     assert p_out >= 0
-    dwell_time = 0
     # Door blocking
-    if np.random.sample() < state.db:
-        dwell_time += 60
+    db_time = door_block_time if np.random.sample() < state.db else 0
     # Passenger transfer
-    dwell_time += 12.5 + 0.22 * p_in + 0.13 * p_out
-    return dwell_time
+    dwell_time = 12.5 + 0.22 * p_in + 0.13 * p_out
+    return db_time + dwell_time
+
+
+def gen_intermediate_dwell_time(number_of_passengers):
+    return 0.22 * number_of_passengers

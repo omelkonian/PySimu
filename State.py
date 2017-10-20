@@ -8,16 +8,30 @@ from Statistics import Statistics
 
 class Tram(object):
     """Representation of a tram."""
-    def __init__(self, id_, nonstop=None):
+    def __init__(self, id_, nonstop=None, destroyed=False):
         self.id = id_
         self.capacity = 0
+        self.cap_debug = []
         self.nonstop = nonstop
-        self.destroy = []
+        self.destroyed = destroyed
         self.stop = None
 
+    def embark(self, pin, st):
+        self.capacity += pin
+        self.cap_debug.append((stop_names[st], '+{}={}'.format(pin, self.capacity)))
+
+    def disembark(self, pout, st):
+        self.capacity -= pout
+        self.cap_debug.append((stop_names[st], '-{}={}'.format(pout, self.capacity)))
+
     def __str__(self):
-        return "Tram {0.id} [{0.capacity}] {1} @{2}".format(
-            self, "!NONSTOP" if self.nonstop else "", stop_names[self.stop] if self.stop else '-')
+        l = len(self.cap_debug)
+        return "Tram#{0} [{1}:{2}] {3} {4} @{5}".format(
+            self.id, self.capacity,
+            self.cap_debug[l-10:],
+            "xxx" if self.destroyed else "",
+            "!NONSTOP" if self.nonstop else "",
+            stop_names[self.stop] if self.stop else '-')
 
 
 class Stop(object):
@@ -29,6 +43,7 @@ class Stop(object):
         self.queue = deque()
         self.predicted_until = None
         self.to_destroy = 0
+        self.parked_tram = None
 
     @property
     def capacity(self):
@@ -41,13 +56,14 @@ class Stop(object):
 
 class State(object):
     """State of the simulation"""
-    def __init__(self, q, f, c, dd, db):
+    def __init__(self, q, f, c, dd, db, sd):
         # Parameters
         self.q = q
         self.f = f
         self.c = c
         self.dd = dd
         self.db = db
+        self.switch_delay = sd
 
         # State variables
         self.end_simulation = False
@@ -64,6 +80,22 @@ class State(object):
             self.initial_trams = ceil(self.initial_trams)
         it = int(self.initial_trams/2)
         self.trams = [Tram(i, nonstop=CS_DEP) for i in range(it)] + [Tram(i) for i in range(it, number_of_trams)]
+        self.switches = {'P+R': None, 'CS': None}
+
+    def use_switches(self, timestamp, st):
+        est = {0: 'P+R', 8: 'CS', 9: 'CS', 17: 'P+R'}[st]
+        if self.switches[est] is None:
+            self.switches[est] = timestamp
+            return 0
+        else:
+            allow = self.switches[est].shift(seconds=self.switch_delay)
+            if timestamp.time > allow.time:
+                self.switches[est] = timestamp
+                return 0
+            else:
+                wait = (allow.time - timestamp.time).total_seconds()
+                self.switches[est] = timestamp.shift(seconds=wait)
+                return wait
 
     def __str__(self):
         ret = "============ [{}] STATE ============\nTRAMS:\n".format(self.time)

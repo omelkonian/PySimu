@@ -1,5 +1,6 @@
 # Trams
 number_of_trams = 13
+safety_time = 40
 
 # Stops
 stop_names = [
@@ -9,11 +10,13 @@ stop_names = [
     "CS->", "VaR->", "GaW->", "KrR->", "PaL->", "HeL->", "UMC->", "WKZ->", "P+R->",
 ]
 number_of_stops = len(stop_names)
+door_block_time = 60
 
 # Endstations
 PR_DEP, PR_ARR, CS_DEP, CS_ARR = 0, 17, 9, 8
-end_dep = lambda stop: stop in [PR_DEP, CS_DEP]
-end_arr = lambda stop: stop in [PR_ARR, CS_ARR]
+end_dep = lambda st: st in [PR_DEP, CS_DEP]
+end_arr = lambda st: st in [PR_ARR, CS_ARR]
+end_stop = lambda st: end_dep(st) or end_arr(st)
 
 # Driving times
 avg_driving_times = {
