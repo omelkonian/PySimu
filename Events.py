@@ -114,19 +114,15 @@ class Enqueue(Event):
             state.trams[self.tram].nonstop = self.nonstop
 
         # Destroy trams at night
-        if (end_dep(self.stop)
-                and state.stops[self.stop].to_destroy > 0
-                and self.timestamp.time < state.stops[self.stop].last_departure.shift(minutes=15).time):
-            assert False
-            state.stops[self.stop].to_destroy -= 1
-            state.trams[self.tram].destroyed = True
-            print(state)
-            return
 
-        if not state.stops[self.stop].queue:
+        if not state.stops[self.stop].parked_tram:
             events.schedule(TramArrival(self.timestamp, self.tram, self.stop))
         else:
-            state.stops[self.stop].queue.append(self.tram)
+            if end_dep(self.stop) and state.stops[self.stop].to_destroy > 0:
+                state.stops[self.stop].to_destroy -= 1
+                state.trams[self.tram].destroyed = True
+            else:
+                state.stops[self.stop].queue.append(self.tram)
 
     def __str__(self):
         return self.s("ENQUEUE\t Tram {0} @ {1}".format(self.tram, stop_names[self.stop]))
@@ -226,25 +222,27 @@ class TramExpectedDeparture(Event):
         self.tram = tram
         self.stop = stop
         self.cap = cap
+        self.pinter = 0
 
     def handle(self, state, events):
         super().handle(state, events)
-        colored('red', '!!!!!!!!!')
         state.stops[self.stop].parked_tram = None
 
         # Add delay of intermediate passengers
         p_inter = state.trams[self.tram].capacity - self.cap
+        self.pinter = p_inter
         dwell_inter = gen_intermediate_dwell_time(p_inter)
 
         # Extra delay at endstops
-        # extra += state.q * 60 if end_arr(self.stop) else 0
-        dwell_switch = state.use_switches(self.timestamp, self.stop) if end_stop(self.stop) else 0
+        dwell_switch = state.q * 60 if end_arr(self.stop) else 0
+        # dwell_switch = state.use_switches(self.timestamp, self.stop) if end_stop(self.stop) else 0
 
         events.schedule(TramDeparture(self.timestamp.shift(seconds=dwell_inter + dwell_switch),
                                       tram=self.tram, stop=self.stop))
 
     def __str__(self) -> str:
-        return self.s("T_E_DEP\t\tTram {0}\t\t@{1}".format(self.tram, stop_names[self.stop]))
+        return self.s("T_E_DEP\t\tTram {0}\t\t@{1}\t{2}".format(
+            self.tram, stop_names[self.stop], colored('green', '+ {}'.format(self.pinter))))
 
 
 class TramDeparture(Event):
@@ -268,7 +266,9 @@ class TramDeparture(Event):
         # Deque next tram
         if state.stops[self.stop].queue:
             next_tram = state.stops[self.stop].queue.popleft()
-            events.schedule(TramArrival(self.timestamp, next_tram, self.stop))
+            arrival_time = max(self.timestamp.time, state.timetable[self.stop].peek_schedule().time) \
+                if end_dep(self.stop) else 0
+            events.schedule(TramArrival(T(time=arrival_time), next_tram, self.stop))
 
     def __str__(self) -> str:
         return self.s("T_DEP\t\tTram {0}\t\t@{1}".format(self.tram, stop_names[self.stop]))

@@ -23,9 +23,6 @@ class Statistics(object):
         self.waiting["passengers"] += 1
         self.waiting["waiting_times"] += waiting_time
         if waiting_time > self.waiting["max"]:
-            # if waiting_time > 3000:
-            #     print(state)
-            print('[{}]: {} + {}'.format(t, stop_names[stop], colored('red', waiting_time)))
             self.waiting["max"] = waiting_time
 
     @property
@@ -62,7 +59,6 @@ class Statistics(object):
 
     @staticmethod
     def dt(seconds):
-        # assert seconds < 5000
         return T('00:00:00').shift(seconds=seconds).time.format('HH:mm:ss')
 
     def __str__(self) -> str:

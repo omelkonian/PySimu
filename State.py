@@ -25,11 +25,10 @@ class Tram(object):
         self.cap_debug.append((stop_names[st], '-{}={}'.format(pout, self.capacity)))
 
     def __str__(self):
-        l = len(self.cap_debug)
-        return "Tram#{0} [{1}:{2}] {3} {4} @{5}".format(
-            self.id, self.capacity,
-            self.cap_debug[l-10:],
+        return "{0} Tram#{1} [{2}:{3}] {4} @{5}".format(
             "xxx" if self.destroyed else "",
+            self.id, self.capacity,
+            self.cap_debug[len(self.cap_debug)-10:],
             "!NONSTOP" if self.nonstop else "",
             stop_names[self.stop] if self.stop else '-')
 
@@ -75,11 +74,10 @@ class State(object):
         self.time = None
         self.statistics = Statistics()
         self.stops = [Stop(i) for i in range(number_of_stops)]
-        self.initial_trams = floor(number_of_trams / floor(15/f))
+        self.trams = [Tram(i) for i in range(number_of_trams)]
+        self.initial_trams = int(floor(number_of_trams / floor(15/f)))
         if self.initial_trams % 2 != 0:
             self.initial_trams = ceil(self.initial_trams)
-        it = int(self.initial_trams/2)
-        self.trams = [Tram(i, nonstop=CS_DEP) for i in range(it)] + [Tram(i) for i in range(it, number_of_trams)]
         self.switches = {'P+R': None, 'CS': None}
 
     def use_switches(self, timestamp, st):

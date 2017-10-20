@@ -29,19 +29,14 @@ def gen_passenger_arrival(state, stop):
 # Passenger Out
 def gen_passenger_exit_percentage(stop):
     a, b = driving_parameters[stop]
-    if a == 0 or b == 0:
-        return 0
-    return np.random.beta(a, b)
+    return 0 if (a * b == 0) else np.random.beta(a, b)
 
 
 # Dwell time
 def gen_dwell_time(state, p_in, p_out):
-    assert p_in >= 0
-    assert p_out >= 0
-    # Door blocking
-    db_time = door_block_time if np.random.sample() < state.db else 0
-    # Passenger transfer
-    dwell_time = 12.5 + 0.22 * p_in + 0.13 * p_out
+    assert p_in >= 0 and p_out >= 0
+    db_time = door_block_time if np.random.sample() < state.db else 0  # Door blocking
+    dwell_time = 12.5 + 0.22 * p_in + 0.13 * p_out  # Passenger transfer
     return db_time + dwell_time
 
 

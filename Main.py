@@ -7,6 +7,9 @@ from T import T
 
 def initial_events(state):
     it = int(state.initial_trams/2)
+    pk = number_of_trams - 2 * it
+    pk_cs = int(ceil(pk/2))
+    pk_pr = int(floor(pk/2))
     return [
         # Simulation end
         EndSim(T('23:00:00')),
@@ -15,28 +18,29 @@ def initial_events(state):
         LChange(T('06:15:00').shift(minutes=15 * i))
         for i in range(4 * 15)
     ] + [
-        # Initial CS trams
-        Enqueue(T('05:30:00').shift(minutes=15 * tr), tram=tr, stop=PR_DEP)
+        # Initial trams (CS)
+        Enqueue(T('05:30:00').shift(minutes=15 * tr), tram=tr, stop=PR_DEP, nonstop=CS_DEP)
         for tr in range(it)
     ] + [
-        # Initial PR trams
+        # Initial trams (PR)
         Enqueue(T('06:00:00').shift(minutes=15 * tr), tram=tr + it, stop=PR_DEP)
         for tr in range(it)
     ] + [
-        # Peak trams
-        Enqueue(T('07:00:00').shift(minutes=-(state.q + end_to_end_time) if tr % 2 else 0).shift(),
-                tram=tr + state.initial_trams,
-                stop=PR_DEP,
-                nonstop=(CS_DEP if tr % 2 else None))
-        for tr in range(number_of_trams - (2 * it))
+        # Peak trams (CS)
+        Enqueue(T('07:00:00').shift(minutes=-(state.q + end_to_end_time)),
+                tram=tr + 2 * it, stop=PR_DEP, nonstop=CS_DEP)
+        for tr in range(pk_cs)
+    ] + [
+        # Peak trams (PR)
+        Enqueue(T('07:00:00'), tram=tr + 2 * it + pk_cs, stop=PR_DEP)
+        for tr in range(pk_pr)
     ] + [
         # Destroy trams in the evening
-        TramDestroy(T('23:00:00'), number_of_trams - state.initial_trams)
+        TramDestroy(T('19:00:00'), number_of_trams - state.initial_trams)
     ] + sum([[
         # Initial passengers
-        PassengerArrival(T('06:00:00').shift(minutes=2 * st), st + offset)
-        for st in range(0, 9)
-        if not end_arr(st)
+        PassengerArrival(T('06:00:00').shift(minutes=st), st + offset)
+        for st in range(0, 9) if not end_arr(st)
     ] for offset in [0, 9]], [])
 
 
@@ -81,10 +85,10 @@ def run(edr, sdr, q, f, c, dd, db, sd, track_tram, track_stop, only_passengers, 
             constraints.append(isinstance(event, PassengerArrival))
 
         if start:
-            constraints.append(event.timestamp.time >= T(start).time)
+            constraints.append(event.timestamp.time >= T(start + ':00').time)
 
         if etype != '':
-            constraints.append(any(filter(lambda s: type(event).__name__.startswith(s), str.split(etype, ','))))
+            constraints.append(any(filter(lambda s: s in type(event).__name__, str.split(etype, ','))))
 
         if all(constraints) or show_all:
             if edr and i % int(edr) == 0:
