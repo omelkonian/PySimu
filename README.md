@@ -41,14 +41,14 @@ To execute `python Main.py --help`
 - [x] Data direction-split
 - [x] EXTRA: Just in time passengers check the difference in dwell time
 - Report
-  * [ ] Problem description
-  * [ ] Assumptions
+  * [x] Problem description
+  * [x] Assumptions
   * [ ] Quantitative analysis
-  * [ ] Model explanation
-    - [ ] Events
-    - [ ] Event handlers
-    - [ ] Performance measures
-    - [ ] State
+  * [x] Model explanation
+    - [x] Events
+    - [x] Event handlers
+    - [x] Performance measures
+    - [x] State
   * [ ] Input Analysis
     - [ ] Modelling of input data
     - [ ] Choice and motivation for applied distributions
@@ -66,5 +66,5 @@ To execute `python Main.py --help`
       * [ ] EXTRA: Ranking and selection
   * [ ] Results from the artificial model
   * [ ] Conclusions
-  * [ ] Appendix: Interview minutes
+  * [x] Appendix: Interview minutes
   
