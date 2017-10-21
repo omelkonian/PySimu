@@ -23,7 +23,7 @@ def gen_passenger_arrival(state, stop):
     else:
         mins = state.time.time.minute
         next_quarter = int(np.floor(mins / 15)) + 1
-        return ((next_quarter * 15) - mins) * 60
+        return 2 * (((next_quarter * 15) - mins) * 60)
 
 
 # Passenger Out

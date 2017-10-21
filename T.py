@@ -59,6 +59,9 @@ def tt(secs):
         getattr(x, k), k) for k in ['hours', 'minutes', 'seconds'] if getattr(x, k))
 
 
+offpeak = lambda t: t.time < T('07:45:00').time or t.time > T('19:00:00').time
+peak = lambda t: not offpeak(t)
+
 if __name__ == '__main__':
     from pprint import pprint
     pprint([

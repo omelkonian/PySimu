@@ -81,13 +81,13 @@ class PassengerArrival(Event):
         # Embark parked train, if it is already there
         if immediate:
             state.stops[self.stop].parked_tram.embark(1, self.stop)
-            state.statistics.update_waiting(0, self.timestamp, self.stop, state)
+            state.statistics.update_waiting(state, 0)
         # Wait at stop, otherwise
         else:
             state.stops[self.stop].enter(self.timestamp, state)
 
         # Schedule next passenger, if it is earlier than 10pm
-        if self.timestamp.time < T('22:00:00').time:
+        if self.timestamp.time < T('21:30:00').time:
             inter_time = round(gen_passenger_arrival(state, self.stop), 5)
             events.schedule(PassengerArrival(
                 self.timestamp.shift(seconds=inter_time), self.stop))
@@ -110,8 +110,6 @@ class Enqueue(Event):
         state.trams[self.tram].stop = self.stop
         if self.nonstop:
             state.trams[self.tram].nonstop = self.nonstop
-
-        # Destroy trams at night
 
         if not state.stops[self.stop].parked_tram:
             events.schedule(TramArrival(self.timestamp, self.tram, self.stop))
@@ -140,6 +138,7 @@ class TramArrival(Event):
 
     def handle(self, state, events):
         super().handle(state, events)
+        state.trams[self.tram].debug.append('[{1}]: {0}'.format(stop_names[self.stop], str(self.timestamp)))
         state.stops[self.stop].parked_tram = state.trams[self.tram]
 
         # Reset nonstop flags
@@ -161,21 +160,14 @@ class TramArrival(Event):
             passenger_arrived = state.stops[self.stop].leave(state).time
             now = self.timestamp.time
             waiting_time = 0 if now < passenger_arrived else (now - passenger_arrived).total_seconds()
-            state.statistics.update_waiting(max(0, waiting_time), self.timestamp, self.stop, state)
+            state.statistics.update_waiting(state, max(0, waiting_time))
         state.trams[self.tram].embark(p_in, self.stop)
 
         self.pout = p_out; self.po = p_out_percentage; self.pin = p_in
 
-        # Distance safety
-        ld = state.stops[self.stop].last_departure
-        safe = (ld is None) or (ld.shift(seconds=safety_time).time < self.timestamp.time)
-        wait_for_next_tram = positive(
-            0 if safe else (self.timestamp.time - ld.shift(seconds=safety_time).time).total_seconds())
-
         # Dwell time
         dwell_time = gen_dwell_time(state, p_in, p_out)
-        delay = max(wait_for_next_tram, dwell_time)
-        dep_time = self.timestamp.shift(seconds=delay)
+        dep_time = self.timestamp.shift(seconds=dwell_time)
 
         # Destroy trams when day is off
         destroy_tram = False
@@ -185,7 +177,7 @@ class TramArrival(Event):
                 seconds_late = (self.timestamp.time - next_schedule.time).total_seconds()
                 state.statistics.update_punctuality(state, self.stop, max(0, seconds_late))
                 if seconds_late < 0:
-                    dep_time = self.timestamp.shift(seconds=max(delay, -seconds_late))
+                    dep_time = self.timestamp.shift(seconds=max(dwell_time, -seconds_late))
                 self.late = seconds_late
             except IndexError:
                 destroy_tram = True
@@ -230,8 +222,16 @@ class TramExpectedDeparture(Event):
         dwell_switch = (traverse_switch_time + state.use_switches(self.timestamp, self.stop)) \
             if end_stop(self.stop) else 0
 
-        events.schedule(TramDeparture(self.timestamp.shift(seconds=dwell_inter + dwell_switch),
-                                      tram=self.tram, stop=self.stop))
+        # dwell_switch += state.q if end_arr(self.stop) else 0
+
+        # Distance safety
+        ld = state.stops[self.stop].last_departure
+        safe = (ld is None) or (ld.shift(seconds=safety_time).time < self.timestamp.time)
+        wait_for_next_tram = positive(
+            0 if safe else (self.timestamp.time - ld.shift(seconds=safety_time).time).total_seconds())
+
+        delay = max(dwell_inter + dwell_switch, wait_for_next_tram)
+        events.schedule(TramDeparture(self.timestamp.shift(seconds=delay), tram=self.tram, stop=self.stop))
 
     def __str__(self) -> str:
         return self.s("T_E_DEP\t\tTram {0}\t\t@{1}\t{2}".format(

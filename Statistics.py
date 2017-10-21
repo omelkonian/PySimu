@@ -2,9 +2,17 @@ from Constants import *
 from T import T
 
 
+def filter_time(func):
+    def inner(self, *args, **kwargs):
+        if self.start is None or args[0].time.time > self.start.time:
+            func(self, *args, **kwargs)
+    return inner
+
+
 class Statistics(object):
 
-    def __init__(self):
+    def __init__(self, start):
+        self.start = start
         self.punctuality = {
             PR_DEP: {"count": 0, "sum": 0, "max": 0, "big": 0},
             CS_DEP: {"count": 0, "sum": 0, "max": 0, "big": 0},
@@ -12,6 +20,7 @@ class Statistics(object):
         self.waiting = {"count": 0, "sum": 0, "max": 0, "big": 0}
         self.stops = {"count": 0, "sum": 0}
 
+    @filter_time
     def update_punctuality(self, state, endstation, delay):
         self.punctuality[endstation]["count"] += 1
         self.punctuality[endstation]["sum"] += delay
@@ -20,15 +29,19 @@ class Statistics(object):
         if delay > state.dd:
             self.punctuality[endstation]["big"] += 1
 
-    def update_waiting(self, waiting_time, t, stop, state):
+    @filter_time
+    def update_waiting(self, state, waiting_time):
         self.waiting["count"] += 1
         self.waiting["sum"] += waiting_time
         if waiting_time > self.waiting["max"]:
+            print(state.time)
+            print(self.start)
             self.waiting["max"] = waiting_time
         if waiting_time > state.wt:
             self.waiting["big"] += 1
 
-    def update_stop_capacity(self, current_cap):
+    @filter_time
+    def update_stop_capacity(self, state, current_cap):
         self.stops["count"] += 1
         self.stops["sum"] += current_cap
 

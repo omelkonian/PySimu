@@ -11,24 +11,24 @@ class Tram(object):
     def __init__(self, id_, nonstop=None, destroyed=False):
         self.id = id_
         self.capacity = 0
-        self.cap_debug = []
+        self.debug = []
         self.nonstop = nonstop
         self.destroyed = destroyed
         self.stop = None
 
     def embark(self, pin, st):
         self.capacity += pin
-        self.cap_debug.append((stop_names[st], '+{}={}'.format(pin, self.capacity)))
+        # self.debug.append((stop_names[st], '+{}={}'.format(pin, self.capacity)))
 
     def disembark(self, pout, st):
         self.capacity -= pout
-        self.cap_debug.append((stop_names[st], '-{}={}'.format(pout, self.capacity)))
+        # self.debug.append((stop_names[st], '-{}={}'.format(pout, self.capacity)))
 
     def __str__(self):
         return "{0} Tram#{1} [{2}:{3}] {4} @{5}".format(
             "xxx" if self.destroyed else "",
             self.id, self.capacity,
-            self.cap_debug[len(self.cap_debug)-10:],
+            '\n' + '\n'.join(list(reversed(self.debug[len(self.debug)-10:]))) + '\n',
             "!NONSTOP" if self.nonstop else "",
             stop_names[self.stop] if self.stop else '-')
 
@@ -42,18 +42,17 @@ class Stop(object):
         self.arrivals = deque()
         self.capacity = 0
         self.queue = deque()
-        self.predicted_until = None
         self.to_destroy = 0
         self.parked_tram = None
 
     def enter(self, timestamp, state):
         self.arrivals.append(timestamp)
         self.capacity += 1
-        state.statistics.update_stop_capacity(self.capacity)
+        state.statistics.update_stop_capacity(state, self.capacity)
 
     def leave(self, state):
         self.capacity -= 1
-        state.statistics.update_stop_capacity(self.capacity)
+        state.statistics.update_stop_capacity(state, self.capacity)
         return self.arrivals.popleft()
 
     def __str__(self):
@@ -63,7 +62,7 @@ class Stop(object):
 
 class State(object):
     """State of the simulation"""
-    def __init__(self, q, f, dd, wt, db, sd):
+    def __init__(self, q, f, dd, wt, db, sd, start=None):
         # Parameters
         self.q = q
         self.f = f
@@ -80,7 +79,7 @@ class State(object):
                           freqs=[offpeak_f, f, offpeak_f])
         self.timetable = {PR_DEP: pr_tt, CS_DEP: pr_tt.generate_other_direction((q + end_to_end_time) % f)}
         self.time = None
-        self.statistics = Statistics()
+        self.statistics = Statistics(start)
         self.stops = [Stop(i) for i in range(number_of_stops)]
         self.trams = [Tram(i) for i in range(number_of_trams)]
         self.initial_trams = int(floor(number_of_trams / floor(offpeak_f/f)))

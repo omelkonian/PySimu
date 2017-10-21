@@ -51,7 +51,7 @@ def initial_events(state):
 @click.option('-dd', default=60, help='Big departure delay (in seconds).')
 @click.option('-wt', default=None, help='Big waiting time (in seconds).')
 @click.option('-db', default=.03, help='Door block percentage.')
-@click.option('-sd', default=40, help="Switch delay (in seconds).")
+@click.option('-sd', default=80, help="Switch delay (in seconds).")
 # Display
 @click.option('-edr', default=None, help='Event display rate.')
 @click.option('-sdr', default=None, help='State display rate.')
@@ -64,8 +64,8 @@ def initial_events(state):
 @click.option('--etype', '-t', default='', help="Filter on event type.")
 def run(edr, sdr, q, f, dd, wt, db, sd, track_tram, track_stop, only_passengers, start, end, show_all, etype):
     """Run simulation with given parameters (in seconds). """
-    wt = wt or f * 60
-    state = State(q, f, dd, wt, db, sd)
+    wt = wt or (f * 60) / 2
+    state = State(q, f, dd, wt, db, sd, T(start))
     events = Events()
     events.schedule(*initial_events(state))
 
