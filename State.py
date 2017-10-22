@@ -1,8 +1,8 @@
+import numpy as np
 from math import floor, ceil
 
 from Constants import *
 from T import *
-from StochasticVariables import next_lambda
 from Statistics import Statistics
 
 
@@ -62,19 +62,18 @@ class Stop(object):
 
 class State(object):
     """State of the simulation"""
-    def __init__(self, nt, q, f, dd, wt, db, sd, start=None):
+    def __init__(self, nt, q, f, db, start=None):
         # Parameters
+        self.pin_lambdas = deque(np.loadtxt('matlab/pin_lambdas.csv', delimiter=',').tolist())
+        self.lambdas = None
+        self.next_lambda()
         self.nt = nt
         self.q = q
         self.f = f
-        self.dd = dd
-        self.wt = wt
         self.db = db
-        self.switch_delay = sd
 
         # State variables
         self.end_simulation = False
-        self.lambdas = next_lambda()
         pr_tt = Timetable(starts=[T('06:00:00'), T('07:04:00'), T('19:15:00')],
                           ends=[T('07:00:00'), T('19:00:00'), T('21:30:00')],
                           freqs=[offpeak_f, f, offpeak_f])
@@ -88,13 +87,16 @@ class State(object):
             self.initial_trams = ceil(self.initial_trams)
         self.switches = {'P+R': None, 'CS': None}
 
+    def next_lambda(self):
+        self.lambdas = self.pin_lambdas.popleft()
+
     def use_switches(self, timestamp, st):
         est = {0: 'P+R', 8: 'CS', 9: 'CS', 17: 'P+R'}[st]
         if self.switches[est] is None:
             self.switches[est] = timestamp
             return 0
         else:
-            allow = self.switches[est].shift(seconds=self.switch_delay)
+            allow = self.switches[est].shift(seconds=switch_delay)
             if timestamp.time > allow.time:
                 self.switches[est] = timestamp
                 return 0

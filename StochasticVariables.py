@@ -3,10 +3,8 @@ from collections import deque
 
 from Constants import avg_driving_times, door_block_time
 
-# Get data from CSV files produces by Matlab scripts
+# Get data from CSV files produced by Matlab scripts
 gamma_shape = np.loadtxt('matlab/gamma_shape.csv').tolist()
-lambdas = deque(np.loadtxt('matlab/pin_lambdas.csv', delimiter=',').tolist())
-next_lambda = lambda: lambdas.popleft()
 driving_parameters = deque([(a[0], a[1]) for a in np.loadtxt('matlab/pin_lambdas.csv', delimiter=',').tolist()])
 
 
@@ -23,7 +21,7 @@ def gen_passenger_arrival(state, stop):
     else:
         mins = state.time.time.minute
         next_quarter = int(np.floor(mins / 15)) + 1
-        return 2 * (((next_quarter * 15) - mins) * 60)
+        return ((next_quarter * 15) - mins) * 60
 
 
 # Passenger Out

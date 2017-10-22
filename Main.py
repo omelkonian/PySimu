@@ -1,5 +1,7 @@
 import click
+from functools import reduce
 
+from Statistics import Statistics
 from State import State
 from Events import *
 from T import T
@@ -49,11 +51,7 @@ def initial_events(state):
 @click.option('-q', default=5, help='Turnaround time (in minutes).')
 @click.option('-f', default=4, help='Tram frequency (every <f> minutes).')
 @click.option('-db', default=.1, help='Door block percentage.')
-@click.option('-sd', default=60, help='Switch delay (in seconds).')
 @click.option('-nt', default=13, help='Number of trams.')
-# Statistics
-@click.option('-dd', default=60, help='Big departure delay (in seconds).')
-@click.option('-wt', default=None, help='Big waiting time (in seconds).')
 # Display
 @click.option('-edr', default=None, help='Event display rate.')
 @click.option('-sdr', default=None, help='State display rate.')
@@ -64,10 +62,9 @@ def initial_events(state):
 @click.option('--end', '-e', default=None, help="End simulation earlier.")
 @click.option('--show_all', '-A', default=None, help="Show all events.")
 @click.option('--etype', '-t', default='', help="Filter on event type.")
-def run(edr, sdr, q, f, db, sd, nt, dd, wt, track_tram, track_stop, only_passengers, start, end, show_all, etype):
+def run(edr, sdr, q, f, db, nt, track_tram, track_stop, only_passengers, start, end, show_all, etype):
     """Run simulation with given parameters (in seconds). """
-    wt = wt or (f * 60) / 2
-    state = State(nt, q, f, dd, wt, db, sd, T(start) if start else None)
+    state = State(nt, q, f, db, T(start) if start else None)
     events = Events()
     events.schedule(*initial_events(state))
 
@@ -104,5 +101,36 @@ def run(edr, sdr, q, f, db, sd, nt, dd, wt, track_tram, track_stop, only_passeng
     print(state.statistics)
 
 
+def output_analysis(q_base, f_base):
+    stats_A = multi_run(101, start='07:00:00', end='11:00', q=q_base, f=f_base, nt=14, db=.1)
+    stats_B = multi_run(101, start='07:00:00', end='11:00', q=q_base-2, f=f_base, nt=13, db=.01)
+    return '|{} - {}|'.format(q_base, f_base), stats_A.PA_avg, stats_B.PA_avg, stats_A.ST_avg, stats_B.ST_avg
+
+def multi_run(n, *args, **kwargs):
+    return reduce(Statistics.combine, [single_run(*args, **kwargs) for _ in range(n)])
+
+def single_run(q=5, f=4, db=.1, nt=13, start='06:00:00', end=None):
+    """Run simulation with given parameters once."""
+    state = State(nt, q, f, db, T(start) if start else None)
+    events = Events()
+    events.schedule(*initial_events(state))
+
+    if end:
+        events.schedule(EndSim(T(end)))
+
+    while not state.end_simulation:
+        event = events.next()
+        event.handle(state, events)
+
+    print('.')
+    return state.statistics
+
+
 if __name__ == '__main__':
-    run()
+    # run()
+
+    # Output analysis
+    from pprint import pprint
+    pprint([output_analysis(q, f) for q in [5, 7, 9] for f in [3, 4, 5, 6]])
+
+

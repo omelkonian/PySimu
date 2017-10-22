@@ -1,3 +1,5 @@
+from numpy.ma import average
+
 from Constants import *
 from T import T
 
@@ -20,13 +22,32 @@ class Statistics(object):
         self.waiting = {"count": 0, "sum": 0, "max": 0, "big": 0}
         self.stops = {"count": 0, "sum": 0}
 
+    @staticmethod
+    def combine(self, other):
+        # assert self.start == other.start
+        # Punctuality
+        for st in [PR_DEP, CS_DEP]:
+            self.punctuality[st]['count'] += other.punctuality[st]['count']
+            self.punctuality[st]['sum'] += other.punctuality[st]['sum']
+            self.punctuality[st]['max'] = max(self.punctuality[st]['max'], other.punctuality[st]['max'])
+            self.punctuality[st]['big'] = average([self.punctuality[st]['big'], other.punctuality[st]['big']])
+        # Waiting times
+        self.waiting['count'] += other.waiting['count']
+        self.waiting['sum'] += other.waiting['sum']
+        self.waiting['max'] = max(self.waiting['max'], other.waiting['max'])
+        self.waiting['big'] = average([self.waiting['big'], other.waiting['big']])
+        # Stop congestion
+        self.stops['count'] += other.stops['count']
+        self.stops['sum'] += other.stops['sum']
+        return self
+
     @filter_time
     def update_punctuality(self, state, endstation, delay):
         self.punctuality[endstation]["count"] += 1
         self.punctuality[endstation]["sum"] += delay
         if delay > self.punctuality[endstation]["max"]:
             self.punctuality[endstation]["max"] = delay
-        if delay > state.dd:
+        if delay > big_delay:
             self.punctuality[endstation]["big"] += 1
 
     @filter_time
@@ -35,7 +56,7 @@ class Statistics(object):
         self.waiting["sum"] += waiting_time
         if waiting_time > self.waiting["max"]:
             self.waiting["max"] = waiting_time
-        if waiting_time > state.wt:
+        if waiting_time > big_wait(state.f):
             self.waiting["big"] += 1
 
     @filter_time

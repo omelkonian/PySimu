@@ -45,7 +45,7 @@ class LChange(Event):
 
     def handle(self, state, events):
         super().handle(state, events)
-        state.lambdas = next_lambda()
+        state.next_lambda()
 
     def __str__(self) -> str:
         return self.s("L_CHANGE")

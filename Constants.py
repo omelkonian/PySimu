@@ -12,6 +12,7 @@ stop_names = [
 ]
 number_of_stops = len(stop_names)
 door_block_time = 60
+switch_delay = 60
 
 # Endstations
 PR_DEP, PR_ARR, CS_DEP, CS_ARR = 0, 17, 9, 8
@@ -26,6 +27,10 @@ avg_driving_times = {
 }
 
 end_to_end_time = 17
+
+# Statistics
+big_delay = 60
+big_wait = lambda f: (f * 60) / 2
 
 
 # Color output
