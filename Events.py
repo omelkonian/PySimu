@@ -169,7 +169,7 @@ class TramArrival(Event):
         dwell_time = gen_dwell_time(state, p_in, p_out)
         dep_time = self.timestamp.shift(seconds=dwell_time)
 
-        # Destroy trams when day is off
+        # Destroy trams when schedules are finished
         destroy_tram = False
         if end_dep(self.stop):
             try:

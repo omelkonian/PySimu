@@ -8,8 +8,8 @@ from T import T
 def initial_events(state):
     it = int(state.initial_trams/2)
     pk = number_of_trams - 2 * it
-    pk_cs = int(ceil(pk/2))
-    pk_pr = int(floor(pk/2))
+    pk_cs = int(floor(pk/2))
+    pk_pr = int(ceil(pk/2))
     return [
         # Simulation end
         EndSim(T('23:00:00')),
@@ -51,11 +51,12 @@ def initial_events(state):
 @click.option('-dd', default=60, help='Big departure delay (in seconds).')
 @click.option('-wt', default=None, help='Big waiting time (in seconds).')
 @click.option('-db', default=.03, help='Door block percentage.')
-@click.option('-sd', default=80, help="Switch delay (in seconds).")
+@click.option('-sd', default=100, help='Switch delay (in seconds).')
+@click.option('-nt', default=13, help='Number of trams.')
 # Display
 @click.option('-edr', default=None, help='Event display rate.')
 @click.option('-sdr', default=None, help='State display rate.')
-@click.option('--track_tram', '-tt', default=None, help="Track specific tram's events.")
+@click.option('--track_tram', '-tt', default=None, help=\Track specific tram's events.")
 @click.option('--track_stop', '-ts', default=None, help="Track specific stop's events.")
 @click.option('--only_passengers', '-p', type=bool, default=False, help="Display only passengers' events.")
 @click.option('--start', '-s', default=None, help="Start simulation later.")
@@ -65,7 +66,7 @@ def initial_events(state):
 def run(edr, sdr, q, f, dd, wt, db, sd, track_tram, track_stop, only_passengers, start, end, show_all, etype):
     """Run simulation with given parameters (in seconds). """
     wt = wt or (f * 60) / 2
-    state = State(q, f, dd, wt, db, sd, T(start) if start else None)
+    state = State(nt, q, f, dd, wt, db, sd, T(start) if start else None)
     events = Events()
     events.schedule(*initial_events(state))
 

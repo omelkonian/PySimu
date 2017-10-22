@@ -62,8 +62,9 @@ class Stop(object):
 
 class State(object):
     """State of the simulation"""
-    def __init__(self, q, f, dd, wt, db, sd, start=None):
+    def __init__(self, nt, q, f, dd, wt, db, sd, start=None):
         # Parameters
+        self.nt = nt
         self.q = q
         self.f = f
         self.dd = dd
