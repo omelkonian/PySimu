@@ -219,10 +219,8 @@ class TramExpectedDeparture(Event):
         dwell_inter = gen_intermediate_dwell_time(p_inter)
 
         # Extra delay at endstops
-        dwell_switch = (traverse_switch_time + state.use_switches(self.timestamp, self.stop)) \
-            if end_stop(self.stop) else 0
-
-        # dwell_switch += state.q if end_arr(self.stop) else 0
+        dwell_endstop = state.q if end_arr(self.stop) else 0
+        dwell_endstop += state.use_switches(self.timestamp, self.stop) if end_stop(self.stop) else 0
 
         # Distance safety
         ld = state.stops[self.stop].last_departure
@@ -230,7 +228,7 @@ class TramExpectedDeparture(Event):
         wait_for_next_tram = positive(
             0 if safe else (self.timestamp.time - ld.shift(seconds=safety_time).time).total_seconds())
 
-        delay = max(dwell_inter + dwell_switch, wait_for_next_tram)
+        delay = max(dwell_inter + dwell_endstop, wait_for_next_tram)
         events.schedule(TramDeparture(self.timestamp.shift(seconds=delay), tram=self.tram, stop=self.stop))
 
     def __str__(self) -> str:

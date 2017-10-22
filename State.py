@@ -82,8 +82,8 @@ class State(object):
         self.time = None
         self.statistics = Statistics(start)
         self.stops = [Stop(i) for i in range(number_of_stops)]
-        self.trams = [Tram(i) for i in range(number_of_trams)]
-        self.initial_trams = int(floor(number_of_trams / floor(offpeak_f/f)))
+        self.trams = [Tram(i) for i in range(self.nt)]
+        self.initial_trams = int(floor(self.nt / (offpeak_f/f)))
         if self.initial_trams % 2 != 0:
             self.initial_trams = ceil(self.initial_trams)
         self.switches = {'P+R': None, 'CS': None}
