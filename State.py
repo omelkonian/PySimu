@@ -11,24 +11,20 @@ class Tram(object):
     def __init__(self, id_, nonstop=None, destroyed=False):
         self.id = id_
         self.capacity = 0
-        self.debug = []
         self.nonstop = nonstop
         self.destroyed = destroyed
         self.stop = None
 
     def embark(self, pin, st):
         self.capacity += pin
-        # self.debug.append((stop_names[st], '+{}={}'.format(pin, self.capacity)))
 
     def disembark(self, pout, st):
         self.capacity -= pout
-        # self.debug.append((stop_names[st], '-{}={}'.format(pout, self.capacity)))
 
     def __str__(self):
-        return "{0} Tram#{1} [{2}:{3}] {4} @{5}".format(
+        return "{0} Tram#{1} {2} @{3}".format(
             "xxx" if self.destroyed else "",
             self.id, self.capacity,
-            '\n' + '\n'.join(list(reversed(self.debug[len(self.debug)-10:]))) + '\n',
             "!NONSTOP" if self.nonstop else "",
             stop_names[self.stop] if self.stop else '-')
 
@@ -88,7 +84,11 @@ class State(object):
         self.switches = {'P+R': None, 'CS': None}
 
     def next_lambda(self):
-        self.lambdas = self.pin_lambdas.popleft()
+        try:
+            self.lambdas = self.pin_lambdas.popleft()
+        except:
+            import pdb
+            pdb.set_trace()
 
     def use_switches(self, timestamp, st):
         est = {0: 'P+R', 8: 'CS', 9: 'CS', 17: 'P+R'}[st]

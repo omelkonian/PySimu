@@ -1,3 +1,4 @@
+import csv
 import click
 from functools import reduce
 
@@ -46,7 +47,11 @@ def initial_events(state):
     ] for offset in [0, 9]], [])
 
 
-@click.command()
+@click.group()
+def simulate():
+    pass
+
+@simulate.command()
 # Parameters
 @click.option('-q', default=5, help='Turnaround time (in minutes).')
 @click.option('-f', default=4, help='Tram frequency (every <f> minutes).')
@@ -66,10 +71,10 @@ def run(edr, sdr, q, f, db, nt, track_tram, track_stop, only_passengers, start, 
     """Run simulation with given parameters (in seconds). """
     state = State(nt, q, f, db, T(start) if start else None)
     events = Events()
-    events.schedule(*initial_events(state))
+    events.schedule(state, *initial_events(state))
 
     if end:
-        events.schedule(EndSim(T(end)))
+        events.schedule(state, EndSim(T(end)))
 
     i = 0
     while not state.end_simulation:
@@ -101,36 +106,46 @@ def run(edr, sdr, q, f, db, nt, track_tram, track_stop, only_passengers, start, 
     print(state.statistics)
 
 
-def output_analysis(q_base, f_base):
-    stats_A = multi_run(101, start='07:00:00', end='11:00', q=q_base, f=f_base, nt=14, db=.1)
-    stats_B = multi_run(101, start='07:00:00', end='11:00', q=q_base-2, f=f_base, nt=13, db=.01)
-    return '|{} - {}|'.format(q_base, f_base), stats_A.PA_avg, stats_B.PA_avg, stats_A.ST_avg, stats_B.ST_avg
+@simulate.command()
+@click.option('-n', default=10, help="Number of runs.")
+@click.option('-q', default=5, help="Turnaround time.")
+@click.option('-f', default=4, help="Frequency.")
+def output_analysis(n, q, f):
+    stats_A = multi_run(n, start='07:00:00', end='11:00', q=q, f=f, nt=14, db=.1)
+    stats_B = multi_run(n, start='07:00:00', end='11:00', q=q-2, f=f, nt=13, db=.01)
+    with open('output_analysis_{}_{}.csv'.format(q, f), 'w+') as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter=' ')
+        csv_writer.writerow(['q', 'f', 'PA_A', 'PA_B', 'ST_A', 'ST_B'])
+        row = list(map(lambda x: round(x, 2),
+                       [q, f, stats_A.PA_avg, stats_B.PA_avg, stats_A.ST_avg, stats_B.ST_avg]))
+        print()
+        print(row)
+        csv_writer.writerow(row)
+
 
 def multi_run(n, *args, **kwargs):
+    print()
+    print(kwargs['nt'], end='', flush=True)
     return reduce(Statistics.combine, [single_run(*args, **kwargs) for _ in range(n)])
+
 
 def single_run(q=5, f=4, db=.1, nt=13, start='06:00:00', end=None):
     """Run simulation with given parameters once."""
     state = State(nt, q, f, db, T(start) if start else None)
     events = Events()
-    events.schedule(*initial_events(state))
+    events.schedule(state, *initial_events(state))
 
     if end:
-        events.schedule(EndSim(T(end)))
+        events.schedule(state, EndSim(T(end)))
 
     while not state.end_simulation:
         event = events.next()
         event.handle(state, events)
 
-    print('.')
+    print('.', end='', flush=True)
     return state.statistics
 
 
 if __name__ == '__main__':
     # run()
-
-    # Output analysis
-    from pprint import pprint
-    pprint([output_analysis(q, f) for q in [5, 7, 9] for f in [3, 4, 5, 6]])
-
-
+    output_analysis()

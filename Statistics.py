@@ -24,7 +24,6 @@ class Statistics(object):
 
     @staticmethod
     def combine(self, other):
-        # assert self.start == other.start
         # Punctuality
         for st in [PR_DEP, CS_DEP]:
             self.punctuality[st]['count'] += other.punctuality[st]['count']
