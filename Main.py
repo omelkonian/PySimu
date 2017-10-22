@@ -65,7 +65,7 @@ def initial_events(state):
 def run(edr, sdr, q, f, dd, wt, db, sd, track_tram, track_stop, only_passengers, start, end, show_all, etype):
     """Run simulation with given parameters (in seconds). """
     wt = wt or (f * 60) / 2
-    state = State(q, f, dd, wt, db, sd, T(start))
+    state = State(q, f, dd, wt, db, sd, T(start) if start else None)
     events = Events()
     events.schedule(*initial_events(state))
 

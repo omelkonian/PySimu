@@ -34,8 +34,6 @@ class Statistics(object):
         self.waiting["count"] += 1
         self.waiting["sum"] += waiting_time
         if waiting_time > self.waiting["max"]:
-            print(state.time)
-            print(self.start)
             self.waiting["max"] = waiting_time
         if waiting_time > state.wt:
             self.waiting["big"] += 1
