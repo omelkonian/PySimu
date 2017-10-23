@@ -70,7 +70,7 @@ def simulate():
 @click.option('--show_all', '-A', default=None, help="Show all events.")
 @click.option('--etype', '-t', default='', help="Filter on event type.")
 def run(edr, sdr, q, f, db, nt, track_tram, track_stop, only_passengers, start, end, show_all, etype):
-    """Run simulation with given parameters (in seconds). """
+    """Run a single simulation with given parameters."""
     state = State(nt, q, f, db, T(start) if start else None)
     events = Events()
     events.schedule(state, *initial_events(state))
@@ -113,6 +113,7 @@ def run(edr, sdr, q, f, db, nt, track_tram, track_stop, only_passengers, start, 
 @click.option('-q', default=5, help="Turnaround time.")
 @click.option('-f', default=4, help="Frequency.")
 def output_analysis(n, q, f):
+    """Run N simulations with given parameters and combine all statistics."""
     stats_A = multi_run(n, start='07:00:00', end='11:00', q=q, f=f, nt=14, db=.1)
     stats_B = multi_run(n, start='07:00:00', end='11:00', q=q-2, f=f, nt=13, db=.01)
     with open('output_analysis_{}_{}.csv'.format(q, f), 'w+') as csv_file:
@@ -130,6 +131,7 @@ def output_analysis(n, q, f):
 @click.option('-qs', default="5,6,7", help="Turnaround time.")
 @click.option('-fs', default="3,4,5,6", help="Frequency.")
 def confidence_compare(n, qs, fs):
+    """Run N simulations with given parameters and compute sample means and variances."""
     for q in qs.split(','):
         for f in fs.split(','):
             q, f = int(q), int(f)
@@ -150,15 +152,6 @@ def confidence_compare(n, qs, fs):
 
             print()
             print('{},{}: {}, {} | {}, {}'.format(q, f, z_pa_avg, z_pa_s, z_st_avg, z_st_s))
-
-    # with open('confidence_compate_{}_{}.csv'.format(q, f), 'w+') as csv_file:
-    #     csv_writer = csv.writer(csv_file, delimiter=',')
-    #     csv_writer.writerow(['q', 'f', 'PA_AVG', 'PA_B', 'ST_A', 'ST_B'])
-    #     row = list(map(lambda x: round(x, 2),
-    #                    [q, f, (stats_A.PA_avg - stats_B.PA_avg), stats_A.ST_avg, stats_B.ST_avg]))
-    #     print()
-    #     print(row)
-    #     csv_writer.writerow(row)
 
 
 def multi_run(n, *args, **kwargs):
@@ -185,6 +178,4 @@ def single_run(q=5, f=4, db=.1, nt=13, start='06:00:00', end=None):
 
 
 if __name__ == '__main__':
-    # run()
-    # output_analysis()
-    confidence_compare()
+    simulate()
