@@ -88,6 +88,7 @@ class PassengerArrival(Event):
         super().__init__(timestamp)
         self.stop = stop
 
+    @safe
     def handle(self, state, events):
         super().handle(state, events)
 
@@ -119,6 +120,7 @@ class Enqueue(Event):
         self.stop = stop
         self.nonstop = nonstop
 
+    @safe
     def handle(self, state, events):
         super().handle(state, events)
         try:
@@ -154,6 +156,7 @@ class TramArrival(Event):
         self.pin = None
         self.pout = None
 
+    @safe
     def handle(self, state, events):
         super().handle(state, events)
         try:
@@ -230,6 +233,7 @@ class TramExpectedDeparture(Event):
         self.cap = cap
         self.pinter = 0
 
+    @safe
     def handle(self, state, events):
         super().handle(state, events)
         state.stops[self.stop].parked_tram = None
@@ -265,6 +269,7 @@ class TramDeparture(Event):
         self.tram = tram
         self.stop = stop
 
+    @safe
     def handle(self, state, events):
         super().handle(state, events)
         state.stops[self.stop].last_departure = self.timestamp

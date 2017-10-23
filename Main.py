@@ -1,6 +1,8 @@
 import csv
 import click
 from functools import reduce
+from numpy.ma import average
+from math import pow
 
 from Statistics import Statistics
 from State import State
@@ -123,6 +125,42 @@ def output_analysis(n, q, f):
         csv_writer.writerow(row)
 
 
+@simulate.command()
+@click.option('-n', default=2, help="Number of runs.")
+@click.option('-qs', default="5,6,7", help="Turnaround time.")
+@click.option('-fs', default="3,4,5,6", help="Frequency.")
+def confidence_compare(n, qs, fs):
+    for q in qs.split(','):
+        for f in fs.split(','):
+            q, f = int(q), int(f)
+
+            z_pa, z_st = [], []
+            print(q, f, end='', flush=True)
+            for _ in range(n):
+                stats_A = single_run(start='07:00:00', end='11:00', q=q, f=f, nt=14, db=.1)
+                stats_B = single_run(start='07:00:00', end='11:00', q=q-2, f=f, nt=13, db=.01)
+                z_pa.append(stats_A.PA_avg - stats_B.PA_avg)
+                z_st.append(stats_A.ST_avg - stats_B.ST_avg)
+
+            z_pa_avg = average(z_pa)
+            z_st_avg = average(z_st)
+
+            z_pa_s = round(sum(list(map(lambda i: pow(i - z_pa_avg, 2), z_pa))) / (n-1), 3)
+            z_st_s = round(sum(list(map(lambda i: pow(i - z_st_avg, 2), z_st))) / (n-1), 3)
+
+            print()
+            print('{},{}: {}, {} | {}, {}'.format(q, f, z_pa_avg, z_pa_s, z_st_avg, z_st_s))
+
+    # with open('confidence_compate_{}_{}.csv'.format(q, f), 'w+') as csv_file:
+    #     csv_writer = csv.writer(csv_file, delimiter=',')
+    #     csv_writer.writerow(['q', 'f', 'PA_AVG', 'PA_B', 'ST_A', 'ST_B'])
+    #     row = list(map(lambda x: round(x, 2),
+    #                    [q, f, (stats_A.PA_avg - stats_B.PA_avg), stats_A.ST_avg, stats_B.ST_avg]))
+    #     print()
+    #     print(row)
+    #     csv_writer.writerow(row)
+
+
 def multi_run(n, *args, **kwargs):
     print()
     print(kwargs['nt'], end='', flush=True)
@@ -148,4 +186,5 @@ def single_run(q=5, f=4, db=.1, nt=13, start='06:00:00', end=None):
 
 if __name__ == '__main__':
     # run()
-    output_analysis()
+    # output_analysis()
+    confidence_compare()
