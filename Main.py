@@ -109,6 +109,29 @@ def run(edr, sdr, q, f, db, nt, track_tram, track_stop, only_passengers, start, 
 
 
 @simulate.command()
+@click.option('-n', default=1, help="Number of runs.")
+@click.option('-q', default=5, help="Turnaround time.")
+@click.option('-f', default=4, help="Frequency.")
+@click.option('-db', default=.03, help="Door block.")
+def artificial_validation(n, q, f, db):
+    """Run N simulations with given parameters and combine all statistics."""
+    stats = multi_run(n, start='07:00:00', end='11:00', q=q, f=f, db=db)
+    with open('artificial_validation_{}_{}_{}.csv'.format(q, f, db), 'w+') as csv_file:
+        csv_writer = csv.writer(csv_file, dialect='excel', delimiter=',')
+        csv_writer.writerow(['q', 'f', 'db', 'PA_AVG', 'PA_MAX', 'PA_BIG', 'CS_AVG', 'CS_MAX', 'CS_BIG',
+                             'PR_AVG', 'PR_MAX', 'PR_BIG', 'ST_AVG'])
+        row = list(map(lambda x: round(x, 2),
+                       [q, f, db,
+                        stats.PA_avg, stats.PA_max, stats.PA_big,
+                        stats.CS_avg, stats.CS_max, stats.CS_big,
+                        stats.PR_avg, stats.PR_max, stats.PR_big,
+                        stats.ST_avg]))
+        print()
+        print(row)
+        csv_writer.writerow(row)
+
+
+@simulate.command()
 @click.option('-n', default=10, help="Number of runs.")
 @click.option('-q', default=5, help="Turnaround time.")
 @click.option('-f', default=4, help="Frequency.")
@@ -155,8 +178,6 @@ def confidence_compare(n, qs, fs):
 
 
 def multi_run(n, *args, **kwargs):
-    print()
-    print(kwargs['nt'], end='', flush=True)
     return reduce(Statistics.combine, [single_run(*args, **kwargs) for _ in range(n)])
 
 
