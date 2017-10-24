@@ -57,11 +57,11 @@ def simulate():
 # Parameters
 @click.option('-q', default=5, help='Turnaround time (in minutes).')
 @click.option('-f', default=4, help='Tram frequency (every <f> minutes).')
-@click.option('-db', default=.1, help='Door block percentage.')
+@click.option('-db', default=.05, help='Door block percentage.')
 @click.option('-nt', default=13, help='Number of trams.')
 # Display
-@click.option('-edr', default=None, help='Event display rate.')
-@click.option('-sdr', default=None, help='State display rate.')
+@click.option('--edr', default=None, help='Event display rate.')
+@click.option('--sdr', default=None, help='State display rate.')
 @click.option('--track_tram', '-tt', default=None, help="Track specific tram's events.")
 @click.option('--track_stop', '-ts', default=None, help="Track specific stop's events.")
 @click.option('--only_passengers', '-p', type=bool, default=False, help="Display only passengers' events.")

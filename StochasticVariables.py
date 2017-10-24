@@ -5,7 +5,7 @@ from Constants import avg_driving_times, door_block_time
 
 # Get data from CSV files produced by Matlab scripts
 gamma_shape = np.loadtxt('matlab/gamma_shape.csv').tolist()
-driving_parameters = deque([(a[0], a[1]) for a in np.loadtxt('matlab/pin_lambdas.csv', delimiter=',').tolist()])
+leaving_parameters = deque([(a[0], a[1]) for a in np.loadtxt('matlab/leaving_parameters.csv', delimiter=',').tolist()])
 
 
 # Driving time
@@ -26,7 +26,7 @@ def gen_passenger_arrival(state, stop):
 
 # Passenger Out
 def gen_passenger_exit_percentage(stop):
-    a, b = driving_parameters[stop]
+    a, b = leaving_parameters[stop]
     return 0 if (a * b == 0) else np.random.beta(a, b)
 
 
