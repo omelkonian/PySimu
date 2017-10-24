@@ -56,3 +56,17 @@ To execute you have 3 options:
        --help      Show this message and exit.
 
      ```
+
+ * `python Main.py artificial_validation --help`
+    ```bash
+    Usage: Main.py artificial_validation [OPTIONS]
+
+      Run N simulations with given parameters and combine all statistics.
+
+    Options:
+      -n INTEGER  Number of runs.
+      -q INTEGER  Turnaround time.
+      -f INTEGER  Frequency.
+      -db FLOAT   Door block.
+      --help      Show this message and exit.
+    ```
